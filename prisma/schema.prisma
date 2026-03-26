@@ -1,0 +1,316 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+enum UniversityBadgeStatus {
+  NONE
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum OtpPurpose {
+  AUTH
+}
+
+enum OtpStatus {
+  PENDING
+  VERIFIED
+  EXPIRED
+}
+
+enum AudienceScope {
+  OPEN
+  UNIVERSITY_ONLY
+}
+
+enum EventType {
+  VISITING
+  PVP
+  RANKED
+}
+
+enum ParticipationType {
+  SOLO
+  TEAM
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+enum RegistrationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  CHECKED_IN
+}
+
+enum PaymentStatus {
+  NOT_REQUIRED
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum TeamMemberRole {
+  CAPTAIN
+  MEMBER
+}
+
+enum MatchStatus {
+  DRAFT
+  SCHEDULED
+  COMPLETED
+}
+
+model User {
+  id                        String                  @id @default(cuid())
+  email                     String                  @unique
+  phone                     String?                 @unique
+  fullName                  String
+  role                      UserRole                @default(STUDENT)
+  isActive                  Boolean                 @default(true)
+  universityName            String?
+  universityEmail           String?
+  universityStudentId       String?
+  department                String?
+  graduationYear            Int?
+  universityBadgeStatus     UniversityBadgeStatus   @default(NONE)
+  universityBadgeApprovedAt DateTime?
+  createdAt                 DateTime                @default(now())
+  updatedAt                 DateTime                @updatedAt
+  otpCodes                  OtpCode[]
+  createdEvents             Event[]                 @relation("EventCreatedBy")
+  coordinatorAssignments    CoordinatorAssignment[] @relation("CoordinatorUser")
+  coordinatorAssignmentsMade CoordinatorAssignment[] @relation("CoordinatorAssignedBy")
+  registrations             EventRegistration[]     @relation("RegistrationUser")
+  captainedTeams            Team[]                  @relation("TeamCaptain")
+  teamMemberships           TeamMember[]
+  universityBadgeDecisions  UniversityBadgeLog[]    @relation("BadgeReviewedBy")
+  universityBadgeLogs       UniversityBadgeLog[]
+}
+
+model OtpCode {
+  id         String    @id @default(cuid())
+  email      String
+  codeHash   String
+  purpose    OtpPurpose
+  status     OtpStatus @default(PENDING)
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email, purpose, status])
+}
+
+model UniversityBadgeLog {
+  id           String                @id @default(cuid())
+  userId       String
+  reviewerId   String?
+  status       UniversityBadgeStatus
+  notes        String?
+  createdAt    DateTime              @default(now())
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewer     User?                 @relation("BadgeReviewedBy", fields: [reviewerId], references: [id], onDelete: SetNull)
+}
+
+model Event {
+  id                   String                  @id @default(cuid())
+  title                String
+  slug                 String                  @unique
+  description          String?
+  type                 EventType
+  participationType    ParticipationType
+  audienceScope        AudienceScope           @default(OPEN)
+  status               EventStatus             @default(DRAFT)
+  requiresPayment      Boolean                 @default(false)
+  entryFee             Decimal?                @db.Decimal(10, 2)
+  venue                String?
+  startsAt             DateTime?
+  endsAt               DateTime?
+  registrationOpensAt  DateTime?
+  registrationClosesAt DateTime?
+  maxParticipants      Int?
+  teamSizeMin          Int?
+  teamSizeMax          Int?
+  roundsEnabled        Boolean                 @default(false)
+  roundCount           Int?
+  winnerCount          Int?
+  metadata             Json?
+  createdById          String
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  createdBy            User                    @relation("EventCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  coordinatorAssignments CoordinatorAssignment[]
+  registrations        EventRegistration[]
+  teams                Team[]
+  rounds               EventRound[]
+  matches              PvpMatch[]
+  leaderboardEntries   LeaderboardEntry[]
+  results              EventResult[]
+
+  @@index([type, status])
+}
+
+model CoordinatorAssignment {
+  id           String    @id @default(cuid())
+  userId       String
+  eventId      String?
+  assignedById String
+  permissions  Json?
+  startsAt     DateTime?
+  endsAt       DateTime?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation("CoordinatorUser", fields: [userId], references: [id], onDelete: Cascade)
+  event        Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  assignedBy   User      @relation("CoordinatorAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
+
+  @@index([userId, eventId, isActive])
+}
+
+model Team {
+  id            String              @id @default(cuid())
+  eventId       String
+  name          String
+  captainId     String
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  event         Event               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  captain       User                @relation("TeamCaptain", fields: [captainId], references: [id], onDelete: Restrict)
+  members       TeamMember[]
+  registrations EventRegistration[]
+
+  @@unique([eventId, name])
+}
+
+model TeamMember {
+  id        String         @id @default(cuid())
+  teamId    String
+  userId    String
+  role      TeamMemberRole @default(MEMBER)
+  createdAt DateTime       @default(now())
+  team      Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+model EventRegistration {
+  id            String             @id @default(cuid())
+  eventId       String
+  userId        String?
+  teamId        String?
+  status        RegistrationStatus @default(PENDING)
+  paymentStatus PaymentStatus      @default(PENDING)
+  amountDue     Decimal?           @db.Decimal(10, 2)
+  checkedInAt   DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  event         Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user          User?              @relation("RegistrationUser", fields: [userId], references: [id], onDelete: SetNull)
+  team          Team?              @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  result        EventResult?
+  matchesAsA    PvpMatch[]         @relation("MatchParticipantA")
+  matchesAsB    PvpMatch[]         @relation("MatchParticipantB")
+  matchesWon    PvpMatch[]         @relation("MatchWinner")
+  leaderboardEntries LeaderboardEntry[]
+
+  @@unique([eventId, userId])
+  @@unique([eventId, teamId])
+}
+
+model EventRound {
+  id          String     @id @default(cuid())
+  eventId     String
+  roundNumber Int
+  name        String
+  isOptional  Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  event       Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  matches     PvpMatch[]
+
+  @@unique([eventId, roundNumber])
+}
+
+model PvpMatch {
+  id                         String             @id @default(cuid())
+  eventId                    String
+  roundId                    String?
+  roundNumber                Int
+  slotLabel                  String?
+  participantARegistrationId String?
+  participantBRegistrationId String?
+  winnerRegistrationId       String?
+  nextMatchId                String?
+  nextMatchSlot              Int?
+  status                     MatchStatus        @default(DRAFT)
+  notes                      String?
+  scheduledAt                DateTime?
+  completedAt                DateTime?
+  createdAt                  DateTime           @default(now())
+  updatedAt                  DateTime           @updatedAt
+  event                      Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  round                      EventRound?        @relation(fields: [roundId], references: [id], onDelete: SetNull)
+  participantA               EventRegistration? @relation("MatchParticipantA", fields: [participantARegistrationId], references: [id], onDelete: SetNull)
+  participantB               EventRegistration? @relation("MatchParticipantB", fields: [participantBRegistrationId], references: [id], onDelete: SetNull)
+  winner                     EventRegistration? @relation("MatchWinner", fields: [winnerRegistrationId], references: [id], onDelete: SetNull)
+  nextMatch                  PvpMatch?          @relation("MatchTree", fields: [nextMatchId], references: [id], onDelete: SetNull)
+  previousMatches            PvpMatch[]         @relation("MatchTree")
+
+  @@index([eventId, roundNumber])
+}
+
+model LeaderboardEntry {
+  id             String            @id @default(cuid())
+  eventId        String
+  registrationId String
+  score          Decimal           @default(0) @db.Decimal(10, 2)
+  wins           Int               @default(0)
+  losses         Int               @default(0)
+  draws          Int               @default(0)
+  position       Int?
+  qualified      Boolean           @default(false)
+  notes          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  event          Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, registrationId])
+}
+
+model EventResult {
+  id             String            @id @default(cuid())
+  eventId        String
+  registrationId String            @unique
+  rank           Int
+  title          String?
+  isWinner       Boolean           @default(false)
+  awardedById    String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  event          Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, rank])
+}
