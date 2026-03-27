@@ -173,16 +173,16 @@ model Event {
 model CoordinatorAssignment {
   id           String    @id @default(cuid())
   userId       String
-  eventId      String?
+  eventId      String
   assignedById String
   permissions  Json?
-  startsAt     DateTime?
-  endsAt       DateTime?
+  startsAt     DateTime
+  endsAt       DateTime
   isActive     Boolean   @default(true)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   user         User      @relation("CoordinatorUser", fields: [userId], references: [id], onDelete: Cascade)
-  event        Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event        Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
   assignedBy   User      @relation("CoordinatorAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
 
   @@index([userId, eventId, isActive])
