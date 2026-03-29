@@ -5,6 +5,7 @@ import { prisma } from "../config/prisma";
 import { ApiError } from "../utils/api-error";
 import { signAccessToken } from "../utils/jwt";
 import { compareOtpCode, generateOtpCode, hashOtpCode } from "../utils/otp";
+import { sendOtpEmail } from "./mail.service";
 
 type VerifyOtpInput = {
   email: string;
@@ -71,9 +72,8 @@ export const requestOtp = async (input: { email: string }) => {
   const code = generateOtpCode();
   const codeHash = await hashOtpCode(code);
   const expiresAt = new Date(Date.now() + env.OTP_TTL_MINUTES * 60 * 1000);
-
-  await prisma.$transaction([
-    prisma.otpCode.updateMany({
+  const otpEntry = await prisma.$transaction(async (tx) => {
+    await tx.otpCode.updateMany({
       where: {
         email: input.email,
         purpose: OtpPurpose.AUTH,
@@ -82,19 +82,33 @@ export const requestOtp = async (input: { email: string }) => {
       data: {
         status: OtpStatus.EXPIRED
       }
-    }),
-    prisma.otpCode.create({
+    });
+
+    return tx.otpCode.create({
       data: {
         email: input.email,
         codeHash,
         purpose: OtpPurpose.AUTH,
         expiresAt
       }
-    })
-  ]);
+    });
+  });
+
+  try {
+    await sendOtpEmail(input.email, code, env.OTP_TTL_MINUTES);
+  } catch (error) {
+    await prisma.otpCode.update({
+      where: { id: otpEntry.id },
+      data: {
+        status: OtpStatus.EXPIRED
+      }
+    });
+
+    throw new ApiError(500, "Failed to send OTP email", error);
+  }
 
   return {
-    message: "OTP generated successfully",
+    message: "OTP generated and sent successfully",
     expiresAt,
     ...(isProduction ? {} : { devOtpCode: code })
   };
@@ -193,4 +207,3 @@ export const verifyOtp = async (input: VerifyOtpInput) => {
 };
 
 export const getCurrentUser = async (userId: string) => buildUserSnapshot(userId);
-
