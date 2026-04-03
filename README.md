@@ -6,7 +6,7 @@ Backend foundation for a multi-role event platform using:
 - `Prisma`
 - `PostgreSQL`
 - `JWT`
-- `OTP-based auth`
+- `Password auth with OTP verification/reset`
 
 ## Roles
 
@@ -14,14 +14,18 @@ Backend foundation for a multi-role event platform using:
 - `STUDENT`
 - `COORDINATOR` via temporary assignment records
 
-Admins are real user roles. Coordinators are assigned by admins and can be event-specific or global.
+Admins are real user roles. Coordinators are temporary assignments made by admins for a specific event and a specific time window.
 
 ## Main Features
 
-- OTP registration/login flow for students
+- Student registration with password
+- Email verification OTP flow
+- Password login
+- Password reset OTP flow
 - JWT authentication
 - University badge submission and admin approval flow
 - Open events and university-only events
+- Event groups/fests that contain multiple child events
 - Event types:
   - `VISITING`
   - `PVP`
@@ -42,6 +46,7 @@ prisma/
   schema.prisma
 src/
   config/
+  controllers/
   middlewares/
   routes/
   services/
@@ -50,6 +55,9 @@ src/
 ```
 
 The code is intentionally split into small service modules so you can change business rules later without rewriting the whole app.
+The request flow now follows:
+
+`route -> controller -> service -> prisma`
 
 ## Environment
 
@@ -62,6 +70,10 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/evn?schema=public"
 JWT_SECRET="replace-with-a-long-secret"
 JWT_EXPIRES_IN="7d"
 OTP_TTL_MINUTES=10
+SENDER_EMAIL="noreply@example.com"
+SEED_ADMIN_EMAIL="admin@example.com"
+SEED_ADMIN_NAME="Platform Admin"
+SEED_ADMIN_PASSWORD="ChangeMe123!"
 ```
 
 ## Scripts
@@ -72,6 +84,7 @@ npm run build
 npm run prisma:generate
 npm run db:push
 npm run db:migrate
+npm run db:seed
 ```
 
 ## API Overview
@@ -80,8 +93,12 @@ Base path: `/api/v1`
 
 ### Auth
 
-- `POST /auth/request-otp`
-- `POST /auth/verify-otp`
+- `POST /auth/register`
+- `POST /auth/login`
+- `POST /auth/request-verification-otp`
+- `POST /auth/verify-email`
+- `POST /auth/request-password-reset-otp`
+- `POST /auth/reset-password`
 - `GET /auth/me`
 
 ### Profile
@@ -95,15 +112,23 @@ Base path: `/api/v1`
 - `POST /admin/users/:userId/make-admin`
 - `PATCH /admin/users/:userId/university-badge`
 - `POST /admin/coordinators`
+- `GET /admin/coordinators`
 - `PATCH /admin/coordinators/:assignmentId/deactivate`
+- `POST /admin/event-groups`
+- `PATCH /admin/event-groups/:groupId`
+- `DELETE /admin/event-groups/:groupId`
 - `POST /admin/events`
+- `PATCH /admin/events/:eventId`
 - `DELETE /admin/events/:eventId`
 
 ### Events
 
+- `GET /events/groups`
+- `GET /events/groups/:groupId`
 - `GET /events`
 - `GET /events/:eventId`
 - `POST /events/:eventId/register`
+- `DELETE /events/:eventId/register`
 - `POST /events/:eventId/register-team`
 - `GET /events/:eventId/bracket`
 - `GET /events/:eventId/leaderboard`
@@ -111,6 +136,7 @@ Base path: `/api/v1`
 ### Competition
 
 - `POST /competition/events/:eventId/rounds`
+- `GET /competition/events/:eventId/registrations`
 - `POST /competition/events/:eventId/matches`
 - `PATCH /competition/matches/:matchId/result`
 - `PUT /competition/events/:eventId/leaderboard`
@@ -118,10 +144,17 @@ Base path: `/api/v1`
 
 ## Current Assumptions
 
-- OTP is email-based for now.
+- Email verification and password reset are OTP-based.
+- Login itself is email + password based.
 - University badge approval is handled by admins.
+- Each big fest/program is modeled as an `EventGroup`, and each actual competition/visit is a child `Event`.
+- Child events inherit parent visibility in practice:
+  - draft groups hide their child events from public users
+  - university-only groups make their child events university-only too
 - Payment support is modeled in the database, but no payment gateway is connected yet.
 - Match auto-advancement is supported through `nextMatchId` and `nextMatchSlot`.
+- Coordinators must be verified university students.
+- Coordinator assignments must be event-specific and time-bound.
 
 ## Verification
 

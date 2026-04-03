@@ -4,13 +4,16 @@ import { Router } from "express";
 import {
   assignCoordinatorController,
   createEventController,
+  createEventGroupController,
   deactivateCoordinatorAssignmentController,
   deleteEventController,
+  deleteEventGroupController,
   listCoordinatorAssignmentsController,
   listUsersController,
   promoteToAdminController,
   reviewUniversityBadgeController,
-  updateEventController
+  updateEventController,
+  updateEventGroupController
 } from "../controllers/admin.controller";
 import { requireAuth } from "../middlewares/auth.middleware";
 import { requireRoles } from "../middlewares/role.middleware";
@@ -18,8 +21,11 @@ import { validate } from "../middlewares/validate.middleware";
 import { asyncHandler } from "../utils/async-handler";
 import { assignCoordinatorSchema } from "../validators/coordinator.validators";
 import {
+  createEventGroupSchema,
   createEventSchema,
   eventIdParamsSchema,
+  eventGroupIdParamsSchema,
+  updateEventGroupSchema,
   updateEventSchema
 } from "../validators/event.validators";
 import { reviewUniversityBadgeSchema } from "../validators/profile.validators";
@@ -52,6 +58,24 @@ router.post(
 router.patch(
   "/coordinators/:assignmentId/deactivate",
   asyncHandler(deactivateCoordinatorAssignmentController)
+);
+
+router.post(
+  "/event-groups",
+  validate({ body: createEventGroupSchema }),
+  asyncHandler(createEventGroupController)
+);
+
+router.patch(
+  "/event-groups/:groupId",
+  validate({ params: eventGroupIdParamsSchema, body: updateEventGroupSchema }),
+  asyncHandler(updateEventGroupController)
+);
+
+router.delete(
+  "/event-groups/:groupId",
+  validate({ params: eventGroupIdParamsSchema }),
+  asyncHandler(deleteEventGroupController)
 );
 
 router.post(

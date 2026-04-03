@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #000000;
+  --color-surface: #09090b;
+  --color-surface-light: #18181b;
+  --color-surface-lighter: #27272a;
+  --color-border: #27272a;
+  --color-border-light: #3f3f46;
+
+  --color-primary: #10b981;
+  --color-primary-light: #34d399;
+  --color-primary-dark: #059669;
+
+  --color-secondary: #000000;
+  --color-secondary-light: #18181b;
+
+  --color-accent: #10b981;
+  --color-accent-light: #34d399;
+
+  --color-success: #10b981;
+  --color-warning: #fbbf24;
+  --color-danger: #ef4444;
+
+  --color-text: #ffffff;
+  --color-text-muted: #a1a1aa;
+  --color-text-dim: #71717a;
+
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --animate-fade-in: fade-in 0.4s ease-out;
+  --animate-slide-up: slide-up 0.4s ease-out;
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+html, body {
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 
+  AudoraLabs Grid Utilities 
+*/
+.bg-grid {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+.bg-dot {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* 
+  Stark, minimalist cards replacing classic glassmorphism
+*/
+.card-stark {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0; /* Audora uses sharp corners often, but we will let component tailwind dictate if they want sm/md radius */
+}
+
+/* Gradient text accent for hero headings */
+.text-glow {
+  text-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+}
+
+.gradient-text-primary {
+  background: linear-gradient(to right, #ffffff, #10b981);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

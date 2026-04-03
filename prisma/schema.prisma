@@ -20,6 +20,8 @@ enum UniversityBadgeStatus {
 
 enum OtpPurpose {
   AUTH
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
 }
 
 enum OtpStatus {
@@ -81,9 +83,12 @@ model User {
   id                        String                  @id @default(cuid())
   email                     String                  @unique
   phone                     String?                 @unique
+  passwordHash              String?
   fullName                  String
   role                      UserRole                @default(STUDENT)
   isActive                  Boolean                 @default(true)
+  isEmailVerified           Boolean                 @default(false)
+  emailVerifiedAt           DateTime?
   universityName            String?
   universityEmail           String?
   universityStudentId       String?
@@ -95,6 +100,7 @@ model User {
   createdAt                 DateTime                @default(now())
   updatedAt                 DateTime                @updatedAt
   otpCodes                  OtpCode[]
+  createdEventGroups        EventGroup[]            @relation("EventGroupCreatedBy")
   createdEvents             Event[]                 @relation("EventCreatedBy")
   coordinatorAssignments    CoordinatorAssignment[] @relation("CoordinatorUser")
   coordinatorAssignmentsMade CoordinatorAssignment[] @relation("CoordinatorAssignedBy")
@@ -132,8 +138,29 @@ model UniversityBadgeLog {
   reviewer     User?                 @relation("BadgeReviewedBy", fields: [reviewerId], references: [id], onDelete: SetNull)
 }
 
+model EventGroup {
+  id           String        @id @default(cuid())
+  title        String
+  slug         String        @unique
+  description  String?
+  venue        String?
+  startsAt     DateTime?
+  endsAt       DateTime?
+  audienceScope AudienceScope @default(OPEN)
+  status       EventStatus   @default(DRAFT)
+  metadata     Json?
+  createdById  String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  createdBy    User          @relation("EventGroupCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  events       Event[]
+
+  @@index([status, audienceScope])
+}
+
 model Event {
   id                   String                  @id @default(cuid())
+  groupId              String
   title                String
   slug                 String                  @unique
   description          String?
@@ -158,6 +185,7 @@ model Event {
   createdById          String
   createdAt            DateTime                @default(now())
   updatedAt            DateTime                @updatedAt
+  group                EventGroup              @relation(fields: [groupId], references: [id], onDelete: Cascade)
   createdBy            User                    @relation("EventCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   coordinatorAssignments CoordinatorAssignment[]
   registrations        EventRegistration[]
@@ -167,6 +195,7 @@ model Event {
   leaderboardEntries   LeaderboardEntry[]
   results              EventResult[]
 
+  @@index([groupId, type, status])
   @@index([type, status])
 }
 

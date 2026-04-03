@@ -5,7 +5,31 @@ export const eventIdParamsSchema = z.object({
   eventId: z.string().trim().min(1)
 });
 
+export const eventGroupIdParamsSchema = z.object({
+  groupId: z.string().trim().min(1)
+});
+
+const eventGroupPayloadSchema = z.object({
+  title: z.string().trim().min(3).max(160),
+  description: z.string().trim().max(1500).optional(),
+  venue: z.string().trim().max(160).optional(),
+  startsAt: z.string().datetime().optional(),
+  endsAt: z.string().datetime().optional(),
+  audienceScope: z.nativeEnum(AudienceScope).default(AudienceScope.OPEN),
+  status: z.nativeEnum(EventStatus).default(EventStatus.DRAFT),
+  metadata: z.record(z.string(), z.unknown()).optional()
+});
+
+export const createEventGroupSchema = eventGroupPayloadSchema;
+export const updateEventGroupSchema = eventGroupPayloadSchema.partial().refine(
+  (data) => Object.keys(data).length > 0,
+  {
+    message: "At least one field must be provided for update"
+  }
+);
+
 const eventPayloadSchema = z.object({
+  groupId: z.string().trim().min(1),
   title: z.string().trim().min(3).max(140),
   description: z.string().trim().max(1000).optional(),
   type: z.nativeEnum(EventType),
@@ -37,6 +61,7 @@ export const updateEventSchema = eventPayloadSchema.partial().refine(
 );
 
 export const listEventsQuerySchema = z.object({
+  groupId: z.string().trim().min(1).optional(),
   type: z.nativeEnum(EventType).optional(),
   participationType: z.nativeEnum(ParticipationType).optional(),
   audienceScope: z.nativeEnum(AudienceScope).optional(),
@@ -44,6 +69,10 @@ export const listEventsQuerySchema = z.object({
     .enum(["true", "false"])
     .transform((value) => value === "true")
     .optional()
+});
+
+export const listEventGroupsQuerySchema = z.object({
+  audienceScope: z.nativeEnum(AudienceScope).optional()
 });
 
 export const soloRegistrationSchema = z.object({});

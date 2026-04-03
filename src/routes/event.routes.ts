@@ -4,7 +4,9 @@ import {
   cancelEventRegistrationController,
   getBracketController,
   getEventByIdController,
+  getEventGroupByIdController,
   getLeaderboardController,
+  listEventGroupsController,
   listEventsController,
   registerForSoloEventController,
   registerTeamForEventController
@@ -14,12 +16,28 @@ import { validate } from "../middlewares/validate.middleware";
 import { asyncHandler } from "../utils/async-handler";
 import {
   eventIdParamsSchema,
+  eventGroupIdParamsSchema,
+  listEventGroupsQuerySchema,
   listEventsQuerySchema,
   soloRegistrationSchema,
   teamRegistrationSchema
 } from "../validators/event.validators";
 
 const router = Router();
+
+router.get(
+  "/groups",
+  optionalAuth,
+  validate({ query: listEventGroupsQuerySchema }),
+  asyncHandler(listEventGroupsController)
+);
+
+router.get(
+  "/groups/:groupId",
+  optionalAuth,
+  validate({ params: eventGroupIdParamsSchema }),
+  asyncHandler(getEventGroupByIdController)
+);
 
 router.get(
   "/",
