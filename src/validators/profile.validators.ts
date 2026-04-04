@@ -14,3 +14,7 @@ export const reviewUniversityBadgeSchema = z.object({
   status: z.enum([UniversityBadgeStatus.VERIFIED, UniversityBadgeStatus.REJECTED]),
   notes: z.string().trim().max(300).optional()
 });
+
+export const deleteMyAccountSchema = z.object({
+  code: z.string().trim().length(6)
+});

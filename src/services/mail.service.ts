@@ -61,3 +61,16 @@ export const sendPasswordResetOtpEmail = async (
     otpCode,
     ttlMinutes
   );
+
+export const sendAccountDeletionOtpEmail = async (
+  email: string,
+  otpCode: string,
+  ttlMinutes: number
+) =>
+  sendOtpEmail(
+    email,
+    "Confirm Account Deletion",
+    "Use the code below to confirm deletion of your account.",
+    otpCode,
+    ttlMinutes
+  );

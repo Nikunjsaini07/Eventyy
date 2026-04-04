@@ -1,24 +1,63 @@
-import { UniversityBadgeStatus, UserRole } from "@prisma/client";
+import { OtpPurpose, OtpStatus, UniversityBadgeStatus, UserRole } from "@prisma/client";
 
+import { env, isProduction } from "../config/env";
 import { prisma } from "../config/prisma";
 import { ApiError } from "../utils/api-error";
+import { compareOtpCode, generateOtpCode, hashOtpCode } from "../utils/otp";
+import { sendAccountDeletionOtpEmail } from "./mail.service";
 
 export const getMyProfile = async (userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: {
+    select: {
+      id: true,
+      email: true,
+      phone: true,
+      fullName: true,
+      role: true,
+      isActive: true,
+      isEmailVerified: true,
+      emailVerifiedAt: true,
+      universityName: true,
+      universityEmail: true,
+      universityStudentId: true,
+      department: true,
+      course: true,
+      year: true,
+      universityBadgeStatus: true,
+      universityBadgeApprovedAt: true,
+      createdAt: true,
+      updatedAt: true,
       coordinatorAssignments: {
-        where: {
-          isActive: true
-        },
         include: {
           event: {
             select: {
               id: true,
               title: true,
-              slug: true
+              slug: true,
+              type: true,
+              status: true,
+              startsAt: true,
+              endsAt: true,
+              group: {
+                select: {
+                  id: true,
+                  title: true,
+                  slug: true
+                }
+              }
+            }
+          },
+          assignedBy: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true
             }
           }
+        },
+        orderBy: {
+          startsAt: "desc"
         }
       },
       registrations: {
@@ -29,12 +68,79 @@ export const getMyProfile = async (userId: string) => {
               title: true,
               slug: true,
               type: true,
-              status: true
+              status: true,
+              startsAt: true,
+              endsAt: true,
+              group: {
+                select: {
+                  id: true,
+                  title: true,
+                  slug: true
+                }
+              }
+            }
+          },
+          team: {
+            select: {
+              id: true,
+              name: true,
+              members: {
+                select: {
+                  id: true,
+                  role: true,
+                  user: {
+                    select: {
+                      id: true,
+                      fullName: true,
+                      email: true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          result: {
+            select: {
+              id: true,
+              rank: true,
+              title: true,
+              isWinner: true,
+              createdAt: true
+            }
+          },
+          leaderboardEntries: {
+            select: {
+              id: true,
+              score: true,
+              wins: true,
+              losses: true,
+              draws: true,
+              position: true,
+              qualified: true,
+              updatedAt: true
             }
           }
         },
         orderBy: {
           createdAt: "desc"
+        }
+      },
+      universityBadgeLogs: {
+        orderBy: {
+          createdAt: "desc"
+        },
+        select: {
+          id: true,
+          status: true,
+          notes: true,
+          createdAt: true,
+          reviewer: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true
+            }
+          }
         }
       }
     }
@@ -44,7 +150,216 @@ export const getMyProfile = async (userId: string) => {
     throw new ApiError(404, "User not found");
   }
 
-  return user;
+  const now = new Date();
+  const coordinatorActivity = {
+    active: user.coordinatorAssignments.filter(
+      (assignment) => assignment.isActive && assignment.startsAt <= now && assignment.endsAt >= now
+    ),
+    past: user.coordinatorAssignments.filter(
+      (assignment) => !assignment.isActive || assignment.endsAt < now
+    ),
+    upcoming: user.coordinatorAssignments.filter(
+      (assignment) => assignment.isActive && assignment.startsAt > now
+    )
+  };
+
+  const eventActivity = {
+    upcoming: user.registrations.filter(
+      (registration) =>
+        registration.event.startsAt !== null && registration.event.startsAt > now
+    ),
+    ongoingOrRecent: user.registrations.filter(
+      (registration) =>
+        registration.event.startsAt === null ||
+        registration.event.startsAt <= now
+    ),
+    past: user.registrations.filter(
+      (registration) => registration.event.endsAt !== null && registration.event.endsAt < now
+    )
+  };
+
+  return {
+    ...user,
+    activitySummary: {
+      totalRegistrations: user.registrations.length,
+      totalCoordinatorAssignments: user.coordinatorAssignments.length,
+      activeCoordinatorAssignments: coordinatorActivity.active.length,
+      pastEvents: eventActivity.past.length
+    },
+    activities: {
+      registrations: eventActivity,
+      coordinatorAssignments: coordinatorActivity,
+      badgeHistory: user.universityBadgeLogs
+    }
+  };
+};
+
+export const requestDeleteMyAccountOtp = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      isActive: true
+    }
+  });
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  if (!user.isActive) {
+    throw new ApiError(400, "User account is already deleted");
+  }
+
+  const code = generateOtpCode();
+  const codeHash = await hashOtpCode(code);
+  const expiresAt = new Date(Date.now() + env.OTP_TTL_MINUTES * 60 * 1000);
+
+  const otpEntry = await prisma.$transaction(async (tx) => {
+    await tx.otpCode.updateMany({
+      where: {
+        email: user.email,
+        purpose: OtpPurpose.ACCOUNT_DELETION,
+        status: OtpStatus.PENDING
+      },
+      data: {
+        status: OtpStatus.EXPIRED
+      }
+    });
+
+    return tx.otpCode.create({
+      data: {
+        email: user.email,
+        userId: user.id,
+        codeHash,
+        purpose: OtpPurpose.ACCOUNT_DELETION,
+        expiresAt
+      }
+    });
+  });
+
+  try {
+    await sendAccountDeletionOtpEmail(user.email, code, env.OTP_TTL_MINUTES);
+  } catch (error) {
+    await prisma.otpCode.update({
+      where: { id: otpEntry.id },
+      data: {
+        status: OtpStatus.EXPIRED
+      }
+    });
+
+    throw new ApiError(500, "Failed to send account deletion OTP email", error);
+  }
+
+  return {
+    message: "Account deletion OTP sent successfully",
+    expiresAt,
+    ...(isProduction ? {} : { devOtpCode: code })
+  };
+};
+
+export const deleteMyAccount = async (userId: string, input: { code: string }) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      isActive: true
+    }
+  });
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  if (!user.isActive) {
+    throw new ApiError(400, "User account is already deleted");
+  }
+
+  const otpEntry = await prisma.otpCode.findFirst({
+    where: {
+      email: user.email,
+      purpose: OtpPurpose.ACCOUNT_DELETION,
+      status: OtpStatus.PENDING
+    },
+    orderBy: {
+      createdAt: "desc"
+    }
+  });
+
+  if (!otpEntry) {
+    throw new ApiError(400, "No active deletion OTP was found for this account");
+  }
+
+  if (otpEntry.expiresAt < new Date()) {
+    await prisma.otpCode.update({
+      where: { id: otpEntry.id },
+      data: {
+        status: OtpStatus.EXPIRED
+      }
+    });
+
+    throw new ApiError(400, "Deletion OTP has expired");
+  }
+
+  const isValid = await compareOtpCode(input.code, otpEntry.codeHash);
+
+  if (!isValid) {
+    await prisma.otpCode.update({
+      where: { id: otpEntry.id },
+      data: {
+        attempts: {
+          increment: 1
+        }
+      }
+    });
+
+    throw new ApiError(400, "Invalid deletion OTP code");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.otpCode.update({
+      where: { id: otpEntry.id },
+      data: {
+        status: OtpStatus.VERIFIED,
+        consumedAt: new Date()
+      }
+    });
+
+    await tx.otpCode.updateMany({
+      where: {
+        email: user.email,
+        purpose: OtpPurpose.ACCOUNT_DELETION,
+        status: OtpStatus.PENDING
+      },
+      data: {
+        status: OtpStatus.EXPIRED
+      }
+    });
+
+    await tx.coordinatorAssignment.updateMany({
+      where: {
+        userId,
+        isActive: true
+      },
+      data: {
+        isActive: false,
+        endsAt: new Date()
+      }
+    });
+
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        isActive: false
+      }
+    });
+  });
+
+  return {
+    message: "Account deleted successfully"
+  };
 };
 
 export const submitUniversityDetails = async (

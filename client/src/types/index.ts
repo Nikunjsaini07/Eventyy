@@ -36,6 +36,8 @@ export interface AuthUser {
   fullName: string;
   role: UserRole;
   effectiveRoles: string[];
+  isEmailVerified?: boolean;
+  emailVerifiedAt?: string;
   universityBadgeStatus: UniversityBadgeStatus;
   isUniversityVerified: boolean;
   coordinatorAssignments: CoordinatorAssignment[];
@@ -54,11 +56,26 @@ export interface CoordinatorAssignment {
     id: string;
     title: string;
     slug: string;
+    type?: EventType;
+    status?: EventStatus;
+    startsAt?: string;
+    endsAt?: string;
+    group?: {
+      id: string;
+      title: string;
+      slug: string;
+    };
+  };
+  assignedBy?: {
+    id: string;
+    fullName: string;
+    email: string;
   };
 }
 
 export interface Event {
   id: string;
+  groupId?: string;
   title: string;
   slug: string;
   description?: string;
@@ -84,6 +101,7 @@ export interface Event {
   createdAt: string;
   updatedAt: string;
   createdBy?: { id: string; fullName: string };
+  group?: { id: string; title: string; slug: string; status?: EventStatus };
   coordinatorAssignments?: CoordinatorAssignment[];
   rounds?: EventRound[];
   registrations?: EventRegistration[];
@@ -170,10 +188,50 @@ export interface EventResult {
   rank: number;
   title?: string;
   isWinner: boolean;
+  createdAt?: string;
   registration?: EventRegistration;
 }
 
+export interface ActivitySummary {
+  totalRegistrations: number;
+  totalCoordinatorAssignments: number;
+  activeCoordinatorAssignments: number;
+  pastEvents: number;
+}
+
+export interface RegistrationActivities {
+  upcoming: EventRegistration[];
+  ongoingOrRecent: EventRegistration[];
+  past: EventRegistration[];
+}
+
+export interface CoordinatorActivities {
+  active: CoordinatorAssignment[];
+  upcoming: CoordinatorAssignment[];
+  past: CoordinatorAssignment[];
+}
+
+export interface BadgeHistoryEntry {
+  id: string;
+  status: UniversityBadgeStatus;
+  notes?: string;
+  createdAt: string;
+  reviewer?: {
+    id: string;
+    fullName: string;
+    email: string;
+  };
+}
+
 export interface UserProfile extends User {
+  isEmailVerified: boolean;
+  emailVerifiedAt?: string;
   coordinatorAssignments: CoordinatorAssignment[];
   registrations: EventRegistration[];
+  activitySummary?: ActivitySummary;
+  activities?: {
+    registrations: RegistrationActivities;
+    coordinatorAssignments: CoordinatorActivities;
+    badgeHistory: BadgeHistoryEntry[];
+  };
 }
