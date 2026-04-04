@@ -22,6 +22,7 @@ enum OtpPurpose {
   AUTH
   EMAIL_VERIFICATION
   PASSWORD_RESET
+  ACCOUNT_DELETION
 }
 
 enum OtpStatus {
