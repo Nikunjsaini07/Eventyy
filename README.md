@@ -203,7 +203,7 @@ This repo can also be deployed to Vercel as a single project:
 Files added for this flow:
 
 - `vercel.json`
-- `api/index.ts`
+- `api/v1/[...all].ts`
 
 Recommended Vercel setup:
 
@@ -216,7 +216,7 @@ How it works:
 - `npm run vercel:install` installs root and client dependencies
 - `npm run vercel:build` builds the Vite frontend in `client`
 - Vercel serves `client/dist` as the site output
-- Requests to `/api/*` are rewritten to the Express app exported from `api/index.ts`
+- Requests to `/api/v1/*` are routed to the Express app exported from `api/v1/[...all].ts`
 
 Required environment variables on Vercel:
 
