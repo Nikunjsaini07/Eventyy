@@ -195,16 +195,14 @@ A sample configuration is included in `.env.example`, and a Render blueprint is 
 
 ## Vercel Deployment
 
-This repo can also be deployed to Vercel as a single project:
+This repo can also be deployed to Vercel as a frontend-only project:
 
-- frontend: built from `client/dist` and copied to root `public/`
-- backend API: served through the serverless function in `api/v1/[...all].ts`
+- frontend: built from `client/dist`
+- backend: hosted separately on Render
 
-Files added for this flow:
+Files used for this flow:
 
 - `vercel.json`
-- `api/v1/[...all].ts`
-- `scripts/vercel-build.mjs`
 
 Recommended Vercel setup:
 
@@ -214,10 +212,10 @@ Recommended Vercel setup:
 
 How it works:
 
-- `npm run vercel:install` installs root and client dependencies
-- `npm run vercel:build` builds the backend, builds the Vite frontend, and copies `client/dist` into root `public/`
-- Vercel serves the static site from `public/`
-- Requests to `/api/v1/*` are handled by the Express app exported from `api/v1/[...all].ts`
+- `npm run vercel:install` installs only the client dependencies
+- `npm run vercel:build` builds the Vite frontend in `client`
+- Vercel serves `client/dist` as the site output
+- All frontend routes rewrite to `index.html` for React Router support
 
 Required environment variables on Vercel:
 
@@ -234,9 +232,9 @@ Required environment variables on Vercel:
 
 Important notes for Vercel:
 
-- Set `CORS_ORIGIN` to your deployed Vercel frontend domain.
-- The backend runs as a serverless function, so local-disk uploads are not suitable; Cloudinary-backed uploads are the right approach here.
-- Prisma is generated during the root install/build flow already used by this project.
+- No backend code should run on Vercel in this setup.
+- The frontend should call your Render backend through `VITE_API_URL`.
+- Set `CORS_ORIGIN` on Render to your deployed Vercel frontend domain.
 
 ## Vercel Frontend + Render Backend
 
