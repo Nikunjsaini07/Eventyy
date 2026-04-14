@@ -237,3 +237,20 @@ Important notes for Vercel:
 - Set `CORS_ORIGIN` to your deployed Vercel frontend domain.
 - The backend runs as a serverless function, so local-disk uploads are not suitable; Cloudinary-backed uploads are the right approach here.
 - Prisma is generated during the root install/build flow already used by this project.
+
+## Vercel Frontend + Render Backend
+
+If your frontend is on Vercel and your Express backend is on Render, the frontend should not use same-origin `/api/v1` calls in production.
+
+Use this client environment variable on Vercel:
+
+- `VITE_API_URL=https://your-render-backend.onrender.com/api/v1`
+
+The frontend Axios client already supports this and falls back to:
+
+- `http://localhost:4000/api/v1` during local development
+- `/api/v1` only when no explicit frontend API URL is provided
+
+You should also make sure your Render backend allows your Vercel domain in:
+
+- `CORS_ORIGIN=https://your-vercel-app.vercel.app`
