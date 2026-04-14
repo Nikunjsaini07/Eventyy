@@ -57,6 +57,7 @@ enum EventStatus {
 enum RegistrationStatus {
   PENDING
   CONFIRMED
+  REJECTED
   CANCELLED
   CHECKED_IN
 }
@@ -106,10 +107,28 @@ model User {
   coordinatorAssignments    CoordinatorAssignment[] @relation("CoordinatorUser")
   coordinatorAssignmentsMade CoordinatorAssignment[] @relation("CoordinatorAssignedBy")
   registrations             EventRegistration[]     @relation("RegistrationUser")
+  reviewedRegistrations     EventRegistration[]     @relation("RegistrationReviewedBy")
   captainedTeams            Team[]                  @relation("TeamCaptain")
   teamMemberships           TeamMember[]
   universityBadgeDecisions  UniversityBadgeLog[]    @relation("BadgeReviewedBy")
   universityBadgeLogs       UniversityBadgeLog[]
+}
+
+model SiteContent {
+  id               String   @id @default("main")
+  collegeName      String   @default("Shobhit University")
+  campusName       String?  @default("Gangoh")
+  festivalName     String   @default("Shobhit Events")
+  tagline          String?  @default("Celebrate talent, culture, and campus energy in one place.")
+  heroTitle        String   @default("Shobhit University Gangoh presents unforgettable campus events.")
+  heroSubtitle     String?  @default("Discover fest collections, explore featured competitions, and register as a solo participant or team.")
+  heroImageUrl     String?
+  aboutTitle       String?  @default("About the platform")
+  aboutDescription String?  @default("A single home for Shobhit University Gangoh event groups, registrations, university badge verification, and coordinator-driven participation approvals.")
+  contactEmail     String?
+  contactPhone     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model OtpCode {
@@ -143,7 +162,9 @@ model EventGroup {
   id           String        @id @default(cuid())
   title        String
   slug         String        @unique
+  subtitle     String?
   description  String?
+  bannerImageUrl String?
   venue        String?
   startsAt     DateTime?
   endsAt       DateTime?
@@ -165,10 +186,13 @@ model Event {
   title                String
   slug                 String                  @unique
   description          String?
+  bannerImageUrl       String?
+  backgroundImageUrl   String?
   type                 EventType
   participationType    ParticipationType
   audienceScope        AudienceScope           @default(OPEN)
   status               EventStatus             @default(DRAFT)
+  requiresApproval     Boolean                 @default(false)
   requiresPayment      Boolean                 @default(false)
   entryFee             Decimal?                @db.Decimal(10, 2)
   venue                String?
@@ -239,7 +263,7 @@ model TeamMember {
   userId    String
   role      TeamMemberRole @default(MEMBER)
   createdAt DateTime       @default(now())
-  team      Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team     Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([teamId, userId])
@@ -254,10 +278,14 @@ model EventRegistration {
   paymentStatus PaymentStatus      @default(PENDING)
   amountDue     Decimal?           @db.Decimal(10, 2)
   checkedInAt   DateTime?
+  reviewedById  String?
+  reviewedAt    DateTime?
+  reviewNote    String?
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   event         Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user          User?              @relation("RegistrationUser", fields: [userId], references: [id], onDelete: SetNull)
+  reviewedBy    User?              @relation("RegistrationReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
   team          Team?              @relation(fields: [teamId], references: [id], onDelete: SetNull)
   result        EventResult?
   matchesAsA    PvpMatch[]         @relation("MatchParticipantA")
