@@ -7,7 +7,9 @@ import {
   listEventGroups,
   listEvents,
   registerForSoloEvent,
-  registerTeamForEvent
+  registerTeamForEvent,
+  joinTeamForEvent,
+  removeTeamMember
 } from "../services/event.service";
 
 export const listEventsController = async (req: Request, res: Response) => {
@@ -43,4 +45,16 @@ export const registerTeamForEventController = async (req: Request, res: Response
 export const cancelEventRegistrationController = async (req: Request, res: Response) => {
   const registration = await cancelEventRegistration(String(req.params.eventId), req.user!.id);
   res.status(200).json(registration);
+};
+
+export const joinTeamForEventController = async (req: Request, res: Response) => {
+  const { teamCode } = req.body;
+  const teamMember = await joinTeamForEvent(String(req.params.eventId), req.user!.id, teamCode);
+  res.status(201).json(teamMember);
+};
+
+export const removeTeamMemberController = async (req: Request, res: Response) => {
+  const { eventId, userId } = req.params;
+  const response = await removeTeamMember(String(eventId), req.user!.id, String(userId));
+  res.status(200).json(response);
 };

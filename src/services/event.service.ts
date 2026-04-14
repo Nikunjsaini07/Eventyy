@@ -1205,3 +1205,81 @@ export const cancelEventRegistration = async (eventId: string, userId: string) =
     include: registrationInclude
   });
 };
+
+export const joinTeamForEvent = async (eventId: string, userId: string, teamCode: string) => {
+  const event = await ensureVisibleEvent(eventId, userId);
+
+  if (event.participationType !== ParticipationType.TEAM) {
+    throw new ApiError(400, "This event only supports solo registration");
+  }
+
+  ensureRegistrationWindowOpen(event);
+  await ensureCapacityAvailable(eventId, event.maxParticipants);
+  await ensureEligibleRegistrant(event, [userId]);
+  await ensureUsersHaveNoActiveRegistrations([userId]);
+
+  const team = await prisma.team.findUnique({
+    where: { id: teamCode },
+    include: { members: true }
+  });
+
+  if (!team || team.eventId !== eventId) {
+    throw new ApiError(404, "Invalid team code");
+  }
+
+  if (event.teamSizeMax && team.members.length >= event.teamSizeMax) {
+    throw new ApiError(400, "Team is already full");
+  }
+
+  return prisma.teamMember.create({
+    data: {
+      teamId: team.id,
+      userId,
+      role: TeamMemberRole.MEMBER
+    }
+  });
+};
+
+export const removeTeamMember = async (eventId: string, captainId: string, memberUserId: string) => {
+  const event = await ensureVisibleEvent(eventId, captainId);
+
+  if (event.participationType !== ParticipationType.TEAM) {
+    throw new ApiError(400, "This event is not a team event");
+  }
+
+  const team = await prisma.team.findFirst({
+    where: {
+      eventId,
+      captainId
+    },
+    include: {
+      members: true
+    }
+  });
+
+  if (!team) {
+    throw new ApiError(403, "Only the team captain can remove members");
+  }
+
+  if (memberUserId === captainId) {
+    throw new ApiError(400, "Captain cannot be removed from the team");
+  }
+
+  const memberToRemove = team.members.find((m) => m.userId === memberUserId);
+  if (!memberToRemove) {
+    throw new ApiError(404, "User is not a member of this team");
+  }
+
+  const newMemberCount = team.members.length - 1;
+  if (event.teamSizeMin && newMemberCount < event.teamSizeMin) {
+    throw new ApiError(400, `Removing this member would drop the team below the minimum size of ${event.teamSizeMin}`);
+  }
+
+  await prisma.teamMember.delete({
+    where: {
+      id: memberToRemove.id
+    }
+  });
+
+  return { message: "Team member removed successfully" };
+};

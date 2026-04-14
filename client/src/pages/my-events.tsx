@@ -137,9 +137,14 @@ function ActivityColumn({
                     {registration.status}
                   </span>
                   {registration.team && (
-                    <span className="rounded-full border border-border bg-surface px-3 py-1 text-[11px] font-medium text-text-muted">
-                      {registration.team.name}
-                    </span>
+                    <div className="flex flex-col gap-1.5 items-end">
+                      <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-bold text-primary">
+                        {registration.team.name}
+                      </span>
+                      <span className="text-[9px] font-mono text-text-muted">
+                        Code: {registration.team.id}
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>

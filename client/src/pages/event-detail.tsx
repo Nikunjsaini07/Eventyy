@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -36,6 +36,8 @@ export default function EventDetailPage() {
   const [cancelling, setCancelling] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [memberIds, setMemberIds] = useState("");
+  const [teamCode, setTeamCode] = useState("");
+  const [teamRegistrationMode, setTeamRegistrationMode] = useState<"create" | "join">("create");
 
   useEffect(() => {
     if (!eventId) {
@@ -151,6 +153,35 @@ export default function EventDetailPage() {
     }
   };
 
+  const handleJoinTeam = async (submissionEvent: React.FormEvent) => {
+    submissionEvent.preventDefault();
+
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    if (!teamCode.trim()) {
+      toast.error("Please enter a valid Team Code");
+      return;
+    }
+
+    setRegistering(true);
+    try {
+      await api.post(`/events/${eventId}/join-team`, { teamCode: teamCode.trim() });
+      toast.success("Successfully joined the team!");
+      setTeamCode("");
+      await Promise.all([refreshEvent(), refreshUser()]);
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Failed to join team";
+      toast.error(message);
+    } finally {
+      setRegistering(false);
+    }
+  };
+
   const handleCancel = async () => {
     setCancelling(true);
     try {
@@ -164,6 +195,19 @@ export default function EventDetailPage() {
       toast.error(message);
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleRemoveMember = async (targetUserId: string) => {
+    try {
+      await api.delete(`/events/${eventId}/team/members/${targetUserId}`);
+      toast.success("Team member removed");
+      await refreshEvent();
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Failed to remove member";
+      toast.error(message);
     }
   };
 
@@ -247,11 +291,18 @@ export default function EventDetailPage() {
                   registrationBlockedForAdmin={Boolean(registrationBlockedForAdmin)}
                   teamName={teamName}
                   memberIds={memberIds}
+                  teamCode={teamCode}
+                  teamRegistrationMode={teamRegistrationMode}
                   setTeamName={setTeamName}
                   setMemberIds={setMemberIds}
+                  setTeamCode={setTeamCode}
+                  setTeamRegistrationMode={setTeamRegistrationMode}
                   onSoloRegister={handleSoloRegister}
                   onTeamRegister={handleTeamRegister}
+                  onJoinTeam={handleJoinTeam}
                   onCancel={handleCancel}
+                  onRemoveMember={handleRemoveMember}
+                  currentUserId={user?.id}
                   onLogin={() => navigate("/login")}
                   isLoggedIn={Boolean(user)}
                 />
@@ -438,21 +489,46 @@ export default function EventDetailPage() {
               </tr>
             </thead>
             <tbody>
-              {activeRegistrations.map((reg) => (
-                <tr key={reg.id}>
-                  <td className="border border-gray-300 px-4 py-2 font-medium">
-                    {reg.team ? reg.team.name : (reg.user?.fullName || "Student")}
-                  </td>
-                  <td className="border border-gray-300 px-4 py-2">
-                    {reg.team
-                      ? `${reg.team.members?.length ?? 0} team members`
-                      : (reg.user?.email || "N/A")}
-                  </td>
-                  <td className="border border-gray-300 px-4 py-2 uppercase">
-                    {reg.status}
-                  </td>
-                </tr>
-              ))}
+              {activeRegistrations.map((reg) => {
+                if (reg.team) {
+                  return (
+                    <React.Fragment key={reg.id}>
+                      <tr className="bg-gray-50">
+                        <td className="border border-gray-300 px-4 py-2 font-bold" colSpan={3}>
+                          Team: {reg.team.name}
+                        </td>
+                      </tr>
+                      {reg.team.members?.map((member) => (
+                        <tr key={member.id}>
+                          <td className="border border-gray-300 px-4 py-2 pl-8 font-medium">
+                            {member.user?.fullName || "Student"} {member.role === "CAPTAIN" ? "(Captain)" : ""}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2">
+                            {member.user?.email || "N/A"}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 uppercase">
+                            {reg.status}
+                          </td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  );
+                }
+
+                return (
+                  <tr key={reg.id}>
+                    <td className="border border-gray-300 px-4 py-2 font-medium">
+                      {reg.user?.fullName || "Student"}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      {reg.user?.email || "N/A"}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 uppercase">
+                      {reg.status}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -472,11 +548,18 @@ function RegistrationCard({
   registrationBlockedForAdmin,
   teamName,
   memberIds,
+  teamCode,
+  teamRegistrationMode,
   setTeamName,
   setMemberIds,
+  setTeamCode,
+  setTeamRegistrationMode,
   onSoloRegister,
   onTeamRegister,
+  onJoinTeam,
   onCancel,
+  onRemoveMember,
+  currentUserId,
   onLogin,
   isLoggedIn,
 }: {
@@ -490,11 +573,18 @@ function RegistrationCard({
   registrationBlockedForAdmin: boolean;
   teamName: string;
   memberIds: string;
+  teamCode: string;
+  teamRegistrationMode: "create" | "join";
   setTeamName: (value: string) => void;
   setMemberIds: (value: string) => void;
+  setTeamCode: (value: string) => void;
+  setTeamRegistrationMode: (value: "create" | "join") => void;
   onSoloRegister: () => Promise<void>;
   onTeamRegister: (event: React.FormEvent) => Promise<void>;
+  onJoinTeam: (event: React.FormEvent) => Promise<void>;
   onCancel: () => Promise<void>;
+  onRemoveMember: (userId: string) => void;
+  currentUserId?: string;
   onLogin: () => void;
   isLoggedIn: boolean;
 }) {
@@ -532,7 +622,45 @@ function RegistrationCard({
         {myRegistration ? (
           <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-100">
             <p className="font-semibold uppercase tracking-[0.08em]">You are already registered</p>
-            <p className="mt-2 text-sm">Current status: {myRegistration.status}</p>
+            {myRegistration.team && (
+              <div className="mt-3 rounded-xl bg-black/30 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#ff8994]">Team info</p>
+                <p className="mt-1 text-sm font-bold text-white">{myRegistration.team.name}</p>
+                <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-2">
+                  <span className="text-[10px] font-medium uppercase text-white/40">Team Code:</span>
+                  <code className="rounded bg-[#ff5665]/20 px-1.5 py-0.5 text-xs font-bold text-[#ff8994]">
+                    {myRegistration.team.id}
+                  </code>
+                </div>
+                <p className="mt-2 text-[10px] italic text-white/50">Share this code with your friends to join</p>
+                {myRegistration.team.members && myRegistration.team.members.length > 0 && (
+                  <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#ff8994]">Team Members</p>
+                    {myRegistration.team.members.map((member) => (
+                      <div key={member.id} className="flex items-center justify-between gap-2 text-xs text-white/70">
+                        <div className="flex flex-1 items-center gap-2">
+                          <span className="min-w-[40px] font-semibold uppercase tracking-wider text-white/50">
+                            {member.role === "CAPTAIN" ? "Capt" : "Memb"}
+                          </span>
+                          <span>{member.user?.fullName || "Student"}</span>
+                          {member.userId === currentUserId && <span className="text-[#ff8994]">(You)</span>}
+                        </div>
+                        {currentUserId === myRegistration.team?.captainId && member.userId !== currentUserId && (
+                          <button
+                            type="button"
+                            onClick={() => onRemoveMember(member.userId)}
+                            className="rounded bg-rose-500/20 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-rose-300 transition-colors hover:bg-rose-500/30"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <p className="mt-3 text-sm">Status: {myRegistration.status}</p>
             <button
               onClick={() => void onCancel()}
               disabled={cancelling}
@@ -561,50 +689,88 @@ function RegistrationCard({
       </div>
 
       {event.participationType === "TEAM" && !myRegistration && (
-        <form onSubmit={(submissionEvent) => void onTeamRegister(submissionEvent)} className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6">
-          <h2 className="text-lg font-black uppercase tracking-[0.08em] text-white">Team registration</h2>
-          <p className="mt-2 text-sm leading-6 text-white/60">
-            Create one team and add optional teammate user IDs separated by commas.
-          </p>
-
-          <div className="mt-5 space-y-4">
-            <label className="block space-y-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
-                Team name
-              </span>
-              <input
-                value={teamName}
-                onChange={(inputEvent) => setTeamName(inputEvent.target.value)}
-                required
-                disabled={!canAuthenticatedUserRegister || registering}
-                className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-[#ff5665] disabled:opacity-50"
-                placeholder="Enter your team name"
-              />
-            </label>
-
-            <label className="block space-y-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
-                Teammate user IDs
-              </span>
-              <input
-                value={memberIds}
-                onChange={(inputEvent) => setMemberIds(inputEvent.target.value)}
-                disabled={!canAuthenticatedUserRegister || registering}
-                className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-[#ff5665] disabled:opacity-50"
-                placeholder="Optional: user-id-1, user-id-2"
-              />
-            </label>
-
+        <div className="mt-5 rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 focus-within:border-[#ff5665]/30">
+          <div className="mb-6 flex gap-2 rounded-xl bg-black/40 p-1">
             <button
-              type="submit"
-              disabled={!canAuthenticatedUserRegister || registering || teamName.trim().length < 2}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-none bg-[#ff5665] px-5 py-4 text-lg font-black uppercase tracking-[0.08em] text-white transition-colors disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/45"
+              type="button"
+              onClick={() => setTeamRegistrationMode("create")}
+              className={cn(
+                "flex-1 rounded-lg py-2 text-[10px] font-bold uppercase tracking-widest transition-all",
+                teamRegistrationMode === "create" ? "bg-[#ff5665] text-white" : "text-white/40 hover:text-white"
+              )}
             >
-              {registering ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
-              Register team
+              Create Team
+            </button>
+            <button
+              type="button"
+              onClick={() => setTeamRegistrationMode("join")}
+              className={cn(
+                "flex-1 rounded-lg py-2 text-[10px] font-bold uppercase tracking-widest transition-all",
+                teamRegistrationMode === "join" ? "bg-[#ff5665] text-white" : "text-white/40 hover:text-white"
+              )}
+            >
+              Join Team
             </button>
           </div>
-        </form>
+
+          {teamRegistrationMode === "create" ? (
+            <form onSubmit={(e) => void onTeamRegister(e)} className="space-y-4">
+              <p className="text-xs leading-6 text-white/60">
+                Register a new team for this event. You will become the captain.
+              </p>
+              <label className="block space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
+                  Team name
+                </span>
+                <input
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                  required
+                  disabled={!canAuthenticatedUserRegister || registering}
+                  className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-[#ff5665]"
+                  placeholder="Enter your team name"
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={!canAuthenticatedUserRegister || registering || teamName.trim().length < 2}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-none bg-[#ff5665] px-5 py-4 text-sm font-black uppercase tracking-[0.08em] text-white transition-colors disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/45"
+              >
+                {registering ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
+                Register Team
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={(e) => void onJoinTeam(e)} className="space-y-4">
+              <p className="text-xs leading-6 text-white/60">
+                Enter the secret Team Code shared by your captain to join.
+              </p>
+              <label className="block space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
+                  Team code
+                </span>
+                <input
+                  value={teamCode}
+                  onChange={(e) => setTeamCode(e.target.value)}
+                  required
+                  disabled={!canAuthenticatedUserRegister || registering}
+                  className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-[#ff5665]"
+                  placeholder="Paste team code here..."
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={!canAuthenticatedUserRegister || registering || !teamCode.trim()}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-none bg-[#ff5665] px-5 py-4 text-sm font-black uppercase tracking-[0.08em] text-white transition-colors disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/45"
+              >
+                {registering ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+                Join Team
+              </button>
+            </form>
+          )}
+        </div>
       )}
     </>
   );
@@ -738,6 +904,19 @@ function ParticipantCard({ registration }: { registration: EventRegistration }) 
               ? `${registration.team.members?.length ?? 0} team members`
               : registration.user?.email || "Student participant"}
           </p>
+          {registration.team && registration.team.members && registration.team.members.length > 0 && (
+            <div className="mt-3 space-y-1 border-t border-white/10 pt-3">
+              {registration.team.members.map((member) => (
+                <div key={member.id} className="flex items-center gap-2 text-xs text-white/70">
+                  <span className="w-12 font-semibold uppercase tracking-wider text-[#ff8994]">
+                    {member.role === "CAPTAIN" ? "Capt" : "Memb"}
+                  </span>
+                  <span>{member.user?.fullName || "Student"}</span>
+                  <span className="text-white/40">({member.user?.email || "N/A"})</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <span
           className={cn(

@@ -83,4 +83,12 @@ export const teamRegistrationSchema = z.object({
   memberIds: z.array(z.string().trim().min(1)).max(20).optional()
 });
 
+export const joinTeamSchema = z.object({
+  teamCode: z.string().trim().min(1, "Team Code is required")
+});
+
+export const removeTeamMemberSchema = z.object({
+  eventId: z.string().trim().min(1),
+  userId: z.string().trim().min(1)
+});
 
