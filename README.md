@@ -162,3 +162,32 @@ Completed locally:
 
 - `npx prisma generate`
 - `npm run build`
+
+## Render Deployment
+
+This backend can be deployed to Render as a Node web service.
+
+Recommended settings:
+
+- Build command: `npm install && npm run build`
+- Start command: `npm start`
+
+Why this is enough:
+
+- `npm run build` now runs `prisma generate` before TypeScript compilation.
+- You do not need a separate `npx prisma generate` step in Render anymore.
+
+Required environment variables on Render:
+
+- `NODE_ENV=production`
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `JWT_EXPIRES_IN`
+- `OTP_TTL_MINUTES`
+- `SENDER_EMAIL`
+- `CORS_ORIGIN`
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+
+A sample configuration is included in `.env.example`, and a Render blueprint is included in `render.yaml`.

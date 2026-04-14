@@ -5,14 +5,18 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "prisma generate && tsc -p tsconfig.json",
     "start": "node dist/server.js",
+    "render:build": "npm run build",
     "client:dev": "npm --prefix client run dev",
     "client:build": "npm --prefix client run build",
     "prisma:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts"
+  },
+  "engines": {
+    "node": "22.x"
   },
   "keywords": [],
   "author": "",
