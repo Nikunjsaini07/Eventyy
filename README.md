@@ -197,13 +197,14 @@ A sample configuration is included in `.env.example`, and a Render blueprint is 
 
 This repo can also be deployed to Vercel as a single project:
 
-- frontend: built from `client/dist`
-- backend API: served through the serverless function in `api/index.ts`
+- frontend: built from `client/dist` and copied to root `public/`
+- backend API: served through the serverless function in `api/v1/[...all].ts`
 
 Files added for this flow:
 
 - `vercel.json`
 - `api/v1/[...all].ts`
+- `scripts/vercel-build.mjs`
 
 Recommended Vercel setup:
 
@@ -214,9 +215,9 @@ Recommended Vercel setup:
 How it works:
 
 - `npm run vercel:install` installs root and client dependencies
-- `npm run vercel:build` builds the Vite frontend in `client`
-- Vercel serves `client/dist` as the site output
-- Requests to `/api/v1/*` are routed to the Express app exported from `api/v1/[...all].ts`
+- `npm run vercel:build` builds the backend, builds the Vite frontend, and copies `client/dist` into root `public/`
+- Vercel serves the static site from `public/`
+- Requests to `/api/v1/*` are handled by the Express app exported from `api/v1/[...all].ts`
 
 Required environment variables on Vercel:
 

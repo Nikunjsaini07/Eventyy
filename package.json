@@ -9,7 +9,7 @@
     "start": "node dist/server.js",
     "render:build": "npm run build",
     "vercel:install": "npm install --include=dev && npm --prefix client install --include=dev",
-    "vercel:build": "npm run build && npm --prefix client run build",
+    "vercel:build": "node scripts/vercel-build.mjs",
     "client:dev": "npm --prefix client run dev",
     "client:build": "npm --prefix client run build",
     "prisma:generate": "prisma generate",
