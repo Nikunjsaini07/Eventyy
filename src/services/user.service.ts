@@ -1,81 +1,72 @@
-import { OtpPurpose, OtpStatus, UniversityBadgeStatus, UserRole } from "@prisma/client";
+import {
+  OtpPurpose,
+  OtpStatus,
+  RegistrationStatus,
+  UniversityBadgeStatus,
+  UserRole
+} from "@prisma/client";
 
 import { env, isProduction } from "../config/env";
 import { prisma } from "../config/prisma";
 import { ApiError } from "../utils/api-error";
 import { compareOtpCode, generateOtpCode, hashOtpCode } from "../utils/otp";
+import { hashPassword } from "../utils/password";
 import { sendAccountDeletionOtpEmail } from "./mail.service";
+
+const publicUserSelect = {
+  id: true,
+  email: true,
+  phone: true,
+  fullName: true,
+  role: true,
+  isActive: true,
+  isEmailVerified: true,
+  emailVerifiedAt: true,
+  universityName: true,
+  universityEmail: true,
+  universityStudentId: true,
+  department: true,
+  course: true,
+  year: true,
+  universityBadgeStatus: true,
+  universityBadgeApprovedAt: true,
+  createdAt: true,
+  updatedAt: true
+} as const;
 
 export const getMyProfile = async (userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
-      id: true,
-      email: true,
-      phone: true,
-      fullName: true,
-      role: true,
-      isActive: true,
-      isEmailVerified: true,
-      emailVerifiedAt: true,
-      universityName: true,
-      universityEmail: true,
-      universityStudentId: true,
-      department: true,
-      course: true,
-      year: true,
-      universityBadgeStatus: true,
-      universityBadgeApprovedAt: true,
-      createdAt: true,
-      updatedAt: true,
-      coordinatorAssignments: {
-        include: {
-          event: {
-            select: {
-              id: true,
-              title: true,
-              slug: true,
-              type: true,
-              status: true,
-              startsAt: true,
-              endsAt: true,
-              group: {
-                select: {
-                  id: true,
-                  title: true,
-                  slug: true
-                }
-              }
-            }
-          },
-          assignedBy: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true
-            }
+      ...publicUserSelect,
+      registrations: {
+        where: {
+          status: {
+            not: RegistrationStatus.CANCELLED
           }
         },
-        orderBy: {
-          startsAt: "desc"
-        }
-      },
-      registrations: {
         include: {
           event: {
             select: {
               id: true,
               title: true,
               slug: true,
-              type: true,
+              bannerImageUrl: true,
+              participationType: true,
+              audienceScope: true,
               status: true,
+              requiresApproval: true,
+              requiresPayment: true,
+              entryFee: true,
+              venue: true,
               startsAt: true,
               endsAt: true,
               group: {
                 select: {
                   id: true,
                   title: true,
-                  slug: true
+                  slug: true,
+                  bannerImageUrl: true
                 }
               }
             }
@@ -84,6 +75,7 @@ export const getMyProfile = async (userId: string) => {
             select: {
               id: true,
               name: true,
+              captainId: true,
               members: {
                 select: {
                   id: true,
@@ -99,30 +91,83 @@ export const getMyProfile = async (userId: string) => {
               }
             }
           },
-          result: {
+          reviewedBy: {
             select: {
               id: true,
-              rank: true,
-              title: true,
-              isWinner: true,
-              createdAt: true
-            }
-          },
-          leaderboardEntries: {
-            select: {
-              id: true,
-              score: true,
-              wins: true,
-              losses: true,
-              draws: true,
-              position: true,
-              qualified: true,
-              updatedAt: true
+              fullName: true,
+              email: true
             }
           }
         },
         orderBy: {
           createdAt: "desc"
+        }
+      },
+      createdEvents: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          bannerImageUrl: true,
+          participationType: true,
+          audienceScope: true,
+          status: true,
+          requiresApproval: true,
+          requiresPayment: true,
+          entryFee: true,
+          venue: true,
+          startsAt: true,
+          endsAt: true,
+          createdAt: true,
+          group: {
+            select: {
+              id: true,
+              title: true,
+              slug: true
+            }
+          },
+          registrations: {
+            where: {
+              status: {
+                notIn: [RegistrationStatus.CANCELLED, RegistrationStatus.REJECTED]
+              }
+            },
+            select: {
+              id: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: "desc"
+        }
+      },
+      coordinatorAssignments: {
+        orderBy: {
+          startsAt: "asc"
+        },
+        select: {
+          id: true,
+          startsAt: true,
+          endsAt: true,
+          isActive: true,
+          event: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              bannerImageUrl: true,
+              status: true,
+              startsAt: true,
+              endsAt: true,
+              group: {
+                select: {
+                  id: true,
+                  title: true,
+                  slug: true
+                }
+              }
+            }
+          }
         }
       },
       universityBadgeLogs: {
@@ -151,44 +196,44 @@ export const getMyProfile = async (userId: string) => {
   }
 
   const now = new Date();
-  const coordinatorActivity = {
-    active: user.coordinatorAssignments.filter(
-      (assignment) => assignment.isActive && assignment.startsAt <= now && assignment.endsAt >= now
-    ),
-    past: user.coordinatorAssignments.filter(
-      (assignment) => !assignment.isActive || assignment.endsAt < now
-    ),
-    upcoming: user.coordinatorAssignments.filter(
-      (assignment) => assignment.isActive && assignment.startsAt > now
-    )
-  };
-
-  const eventActivity = {
+  const registrationActivities = {
     upcoming: user.registrations.filter(
-      (registration) =>
-        registration.event.startsAt !== null && registration.event.startsAt > now
+      (registration) => registration.event.startsAt !== null && registration.event.startsAt > now
     ),
     ongoingOrRecent: user.registrations.filter(
-      (registration) =>
-        registration.event.startsAt === null ||
-        registration.event.startsAt <= now
+      (registration) => registration.event.startsAt === null || registration.event.startsAt <= now
     ),
     past: user.registrations.filter(
       (registration) => registration.event.endsAt !== null && registration.event.endsAt < now
     )
   };
 
+  const coordinatorActivities = {
+    upcoming: user.coordinatorAssignments.filter((assignment) => assignment.startsAt > now),
+    active: user.coordinatorAssignments.filter(
+      (assignment) => assignment.isActive && assignment.startsAt <= now && assignment.endsAt >= now
+    ),
+    past: user.coordinatorAssignments.filter(
+      (assignment) => !assignment.isActive || assignment.endsAt < now
+    )
+  };
+
   return {
     ...user,
+    createdEvents: user.createdEvents,
     activitySummary: {
       totalRegistrations: user.registrations.length,
-      totalCoordinatorAssignments: user.coordinatorAssignments.length,
-      activeCoordinatorAssignments: coordinatorActivity.active.length,
-      pastEvents: eventActivity.past.length
+      pastEvents: registrationActivities.past.length,
+      totalCreatedEvents: user.createdEvents.length,
+      publishedCreatedEvents: user.createdEvents.filter(
+        (event) => event.status === "PUBLISHED"
+      ).length,
+      activeCoordinatorAssignments: coordinatorActivities.active.length
     },
     activities: {
-      registrations: eventActivity,
-      coordinatorAssignments: coordinatorActivity,
+      registrations: registrationActivities,
+      createdEvents: user.createdEvents,
+      coordinatorAssignments: coordinatorActivities,
       badgeHistory: user.universityBadgeLogs
     }
   };
@@ -340,8 +385,7 @@ export const deleteMyAccount = async (userId: string, input: { code: string }) =
 
     await tx.coordinatorAssignment.updateMany({
       where: {
-        userId,
-        isActive: true
+        userId
       },
       data: {
         isActive: false,
@@ -384,7 +428,8 @@ export const submitUniversityDetails = async (
       year: input.year,
       universityBadgeStatus: UniversityBadgeStatus.PENDING,
       universityBadgeApprovedAt: null
-    }
+    },
+    select: publicUserSelect
   });
 
   await prisma.universityBadgeLog.create({
@@ -415,14 +460,19 @@ export const reviewUniversityBadge = async (
     throw new ApiError(400, "Only student accounts can receive university badges");
   }
 
-  const result = await prisma.$transaction(async (tx) => {
+  if (!user.universityName || !user.universityEmail || !user.universityStudentId) {
+    throw new ApiError(400, "This student has not submitted complete university details yet");
+  }
+
+  return prisma.$transaction(async (tx) => {
     const updatedUser = await tx.user.update({
       where: { id: userId },
       data: {
         universityBadgeStatus: input.status,
         universityBadgeApprovedAt:
           input.status === UniversityBadgeStatus.VERIFIED ? new Date() : null
-      }
+      },
+      select: publicUserSelect
     });
 
     await tx.universityBadgeLog.create({
@@ -436,58 +486,62 @@ export const reviewUniversityBadge = async (
 
     return updatedUser;
   });
+};
 
-  return result;
+export const setUserActiveState = async (
+  adminId: string,
+  userId: string,
+  isActive: boolean
+) => {
+  if (adminId === userId) {
+    throw new ApiError(400, "Admins cannot change their own active status");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      isActive: true
+    }
+  });
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  if (user.isActive === isActive) {
+    throw new ApiError(
+      400,
+      isActive ? "User is already active" : "User is already inactive"
+    );
+  }
+
+  return prisma.$transaction(async (tx) => {
+    if (!isActive) {
+      await tx.coordinatorAssignment.updateMany({
+        where: {
+          userId
+        },
+        data: {
+          isActive: false,
+          endsAt: new Date()
+        }
+      });
+    }
+
+    return tx.user.update({
+      where: { id: userId },
+      data: {
+        isActive
+      },
+      select: publicUserSelect
+    });
+  });
 };
 
 export const listUsers = async () =>
   prisma.user.findMany({
-    include: {
-      coordinatorAssignments: {
-        where: {
-          isActive: true
-        },
-        include: {
-          event: {
-            select: {
-              id: true,
-              title: true
-            }
-          }
-        }
-      }
-    },
-    orderBy: {
-      createdAt: "desc"
-    }
-  });
-
-export const listCoordinatorAssignments = async () =>
-  prisma.coordinatorAssignment.findMany({
-    include: {
-      event: {
-        select: {
-          id: true,
-          title: true,
-          slug: true,
-          status: true
-        }
-      },
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true
-        }
-      },
-      assignedBy: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true
-        }
-      }
-    },
+    select: publicUserSelect,
     orderBy: {
       createdAt: "desc"
     }
@@ -495,125 +549,50 @@ export const listCoordinatorAssignments = async () =>
 
 export const promoteToAdmin = async (userId: string) => {
   const user = await prisma.user.findUnique({
-    where: { id: userId }
+    where: { id: userId },
+    select: {
+      id: true
+    }
   });
 
   if (!user) {
     throw new ApiError(404, "User not found");
   }
 
-  return prisma.user.update({
-    where: { id: userId },
-    data: {
-      role: UserRole.ADMIN
-    }
-  });
+  throw new ApiError(
+    400,
+    "Student accounts cannot be promoted to admin. Create a dedicated admin account instead."
+  );
 };
 
-export const assignCoordinator = async (
-  adminId: string,
-  input: {
-    userId: string;
-    eventId: string;
-    startsAt: string;
-    endsAt: string;
-    permissions?: string[];
-  }
-) => {
-  const user = await prisma.user.findUnique({
-    where: { id: input.userId },
-    select: {
-      id: true,
-      role: true,
-      universityBadgeStatus: true
-    }
-  });
-
-  if (!user) {
-    throw new ApiError(404, "Target user not found");
-  }
-
-  if (user.role !== UserRole.STUDENT) {
-    throw new ApiError(400, "Coordinators must be assigned from student accounts");
-  }
-
-  if (user.universityBadgeStatus !== UniversityBadgeStatus.VERIFIED) {
-    throw new ApiError(400, "Only verified university students can become coordinators");
-  }
-
-  const startsAt = new Date(input.startsAt);
-  const endsAt = new Date(input.endsAt);
-
-  if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
-    throw new ApiError(400, "Invalid coordinator assignment dates");
-  }
-
-  if (endsAt <= startsAt) {
-    throw new ApiError(400, "Coordinator assignment end time must be later than start time");
-  }
-
-  const event = await prisma.event.findUnique({
-    where: { id: input.eventId }
-  });
-
-  if (!event) {
-    throw new ApiError(404, "Event not found");
-  }
-
-  const overlappingAssignment = await prisma.coordinatorAssignment.findFirst({
+export const createAdminAccount = async (input: {
+  email: string;
+  password: string;
+  fullName: string;
+  phone?: string;
+}) => {
+  const existingUser = await prisma.user.findFirst({
     where: {
-      userId: input.userId,
-      eventId: input.eventId,
-      isActive: true,
-      startsAt: {
-        lt: endsAt
-      },
-      endsAt: {
-        gt: startsAt
-      }
+      OR: [{ email: input.email }, ...(input.phone ? [{ phone: input.phone }] : [])]
     }
   });
 
-  if (overlappingAssignment) {
-    throw new ApiError(400, "This student already has an overlapping coordinator assignment");
+  if (existingUser) {
+    throw new ApiError(409, "A user with this email or phone already exists");
   }
 
-  return prisma.coordinatorAssignment.create({
+  const passwordHash = await hashPassword(input.password);
+
+  return prisma.user.create({
     data: {
-      userId: input.userId,
-      eventId: input.eventId,
-      assignedById: adminId,
-      startsAt,
-      endsAt,
-      permissions: input.permissions ?? []
+      email: input.email,
+      passwordHash,
+      fullName: input.fullName,
+      phone: input.phone,
+      role: UserRole.ADMIN,
+      isEmailVerified: true,
+      emailVerifiedAt: new Date()
     },
-    include: {
-      event: true,
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true
-        }
-      }
-    }
-  });
-};
-
-export const deactivateCoordinatorAssignment = async (assignmentId: string) => {
-  const assignment = await prisma.coordinatorAssignment.findUnique({
-    where: { id: assignmentId }
-  });
-
-  if (!assignment) {
-    throw new ApiError(404, "Coordinator assignment not found");
-  }
-
-  return prisma.coordinatorAssignment.update({
-    where: { id: assignmentId },
-    data: {
-      isActive: false,
-      endsAt: new Date()
-    }
+    select: publicUserSelect
   });
 };

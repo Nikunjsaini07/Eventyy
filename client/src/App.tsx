@@ -5,15 +5,15 @@ import RootLayout from "@/components/layout/root-layout";
 import HomePage from "@/pages/home";
 import EventsPage from "@/pages/events";
 import EventDetailPage from "@/pages/event-detail";
-import LeaderboardPage from "@/pages/leaderboard";
+import SchedulePage from "@/pages/schedule";
 import ContactPage from "@/pages/contact";
 import LoginPage from "@/pages/login";
 import SignupPage from "@/pages/signup";
 import VerifyEmailPage from "@/pages/verify-email";
 import ResetPasswordPage from "@/pages/reset-password";
 import ProfilePage from "@/pages/profile";
-import CoordinatorDashboard from "@/pages/coordinator-dashboard";
 import AdminDashboard from "@/pages/admin";
+import CoordinatorPage from "@/pages/coordinator";
 import NotFoundPage from "@/pages/not-found";
 import MyEventsPage from "@/pages/my-events";
 
@@ -25,18 +25,18 @@ export default function App() {
           position="top-right"
           toastOptions={{
             style: {
-              background: "#09090b",
+              background: "#0a0a0a",
               color: "#ffffff",
-              border: "1px solid #27272a",
-              borderRadius: "0px",
+              border: "1px solid rgba(255, 86, 101, 0.25)",
+              borderRadius: "16px",
               fontSize: "13px",
-              fontFamily: "monospace",
+              fontFamily: "Inter, sans-serif",
             },
             success: {
-              iconTheme: { primary: "#10b981", secondary: "#09090b" },
+              iconTheme: { primary: "#10b981", secondary: "#0a0a0a" },
             },
             error: {
-              iconTheme: { primary: "#ef4444", secondary: "#09090b" },
+              iconTheme: { primary: "#f43f5e", secondary: "#0a0a0a" },
             },
           }}
         />
@@ -45,8 +45,7 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/events" element={<EventsPage />} />
             <Route path="/events/:eventId" element={<EventDetailPage />} />
-            <Route path="/leaderboard" element={<LeaderboardPage />} />
-            <Route path="/leaderboard/:eventId" element={<LeaderboardPage />} />
+            <Route path="/schedule" element={<SchedulePage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
@@ -54,10 +53,10 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/my-events" element={<MyEventsPage />} />
-            <Route path="/coordinator/:eventId" element={<CoordinatorDashboard />} />
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/coordinator" element={<CoordinatorPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
+          <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

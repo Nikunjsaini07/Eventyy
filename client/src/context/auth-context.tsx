@@ -15,7 +15,6 @@ interface AuthContextType {
   login: (token: string, user: AuthUser) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
-  isCoordinator: boolean;
   isAdmin: boolean;
 }
 
@@ -57,12 +56,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const isCoordinator = user?.effectiveRoles?.includes("COORDINATOR") ?? false;
   const isAdmin = user?.role === "ADMIN";
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, logout, refreshUser: fetchUser, isCoordinator, isAdmin }}
+      value={{ user, loading, login, logout, refreshUser: fetchUser, isAdmin }}
     >
       {children}
     </AuthContext.Provider>

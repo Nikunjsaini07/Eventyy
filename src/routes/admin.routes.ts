@@ -2,62 +2,91 @@ import { UserRole } from "@prisma/client";
 import { Router } from "express";
 
 import {
+  activateUserController,
   assignCoordinatorController,
+  createAdminController,
   createEventController,
   createEventGroupController,
   deactivateCoordinatorAssignmentController,
+  deactivateUserController,
   deleteEventController,
   deleteEventGroupController,
-  listCoordinatorAssignmentsController,
+  getSiteContentController,
+  listAdminEventGroupsController,
+  listAdminEventsController,
   listUsersController,
   promoteToAdminController,
   reviewUniversityBadgeController,
   updateEventController,
-  updateEventGroupController
+  updateEventGroupController,
+  updateSiteContentController
 } from "../controllers/admin.controller";
 import { requireAuth } from "../middlewares/auth.middleware";
 import { requireRoles } from "../middlewares/role.middleware";
 import { validate } from "../middlewares/validate.middleware";
 import { asyncHandler } from "../utils/async-handler";
-import { assignCoordinatorSchema } from "../validators/coordinator.validators";
+import {
+  assignCoordinatorSchema,
+  assignmentIdParamsSchema
+} from "../validators/coordinator.validators";
 import {
   createEventGroupSchema,
   createEventSchema,
   eventIdParamsSchema,
-  eventGroupIdParamsSchema,
+  groupIdParamsSchema,
   updateEventGroupSchema,
   updateEventSchema
 } from "../validators/event.validators";
-import { reviewUniversityBadgeSchema } from "../validators/profile.validators";
+import {
+  adminUserParamsSchema,
+  createAdminSchema,
+  reviewUniversityBadgeSchema
+} from "../validators/profile.validators";
+import { updateSiteContentSchema } from "../validators/site.validators";
 
 const router = Router();
 
 router.use(requireAuth, requireRoles(UserRole.ADMIN));
 
-router.get(
-  "/users",
-  asyncHandler(listUsersController)
+router.get("/site-content", asyncHandler(getSiteContentController));
+router.patch(
+  "/site-content",
+  validate({ body: updateSiteContentSchema }),
+  asyncHandler(updateSiteContentController)
 );
 
-router.get("/coordinators", asyncHandler(listCoordinatorAssignmentsController));
+router.get("/users", asyncHandler(listUsersController));
+router.get("/events", asyncHandler(listAdminEventsController));
+router.get("/event-groups", asyncHandler(listAdminEventGroupsController));
 
-router.post("/users/:userId/make-admin", asyncHandler(promoteToAdminController));
-
-router.patch(
-  "/users/:userId/university-badge",
-  validate({ body: reviewUniversityBadgeSchema }),
-  asyncHandler(reviewUniversityBadgeController)
+router.post(
+  "/create-admin",
+  validate({ body: createAdminSchema }),
+  asyncHandler(createAdminController)
 );
 
 router.post(
-  "/coordinators",
-  validate({ body: assignCoordinatorSchema }),
-  asyncHandler(assignCoordinatorController)
+  "/users/:userId/make-admin",
+  validate({ params: adminUserParamsSchema }),
+  asyncHandler(promoteToAdminController)
 );
 
 router.patch(
-  "/coordinators/:assignmentId/deactivate",
-  asyncHandler(deactivateCoordinatorAssignmentController)
+  "/users/:userId/activate",
+  validate({ params: adminUserParamsSchema }),
+  asyncHandler(activateUserController)
+);
+
+router.patch(
+  "/users/:userId/deactivate",
+  validate({ params: adminUserParamsSchema }),
+  asyncHandler(deactivateUserController)
+);
+
+router.patch(
+  "/users/:userId/university-badge",
+  validate({ params: adminUserParamsSchema, body: reviewUniversityBadgeSchema }),
+  asyncHandler(reviewUniversityBadgeController)
 );
 
 router.post(
@@ -68,13 +97,13 @@ router.post(
 
 router.patch(
   "/event-groups/:groupId",
-  validate({ params: eventGroupIdParamsSchema, body: updateEventGroupSchema }),
+  validate({ params: groupIdParamsSchema, body: updateEventGroupSchema }),
   asyncHandler(updateEventGroupController)
 );
 
 router.delete(
   "/event-groups/:groupId",
-  validate({ params: eventGroupIdParamsSchema }),
+  validate({ params: groupIdParamsSchema }),
   asyncHandler(deleteEventGroupController)
 );
 
@@ -94,6 +123,18 @@ router.delete(
   "/events/:eventId",
   validate({ params: eventIdParamsSchema }),
   asyncHandler(deleteEventController)
+);
+
+router.post(
+  "/events/:eventId/coordinators",
+  validate({ params: eventIdParamsSchema, body: assignCoordinatorSchema }),
+  asyncHandler(assignCoordinatorController)
+);
+
+router.patch(
+  "/coordinator-assignments/:assignmentId/deactivate",
+  validate({ params: assignmentIdParamsSchema }),
+  asyncHandler(deactivateCoordinatorAssignmentController)
 );
 
 export default router;

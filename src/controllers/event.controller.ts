@@ -2,29 +2,27 @@ import { Request, Response } from "express";
 
 import {
   cancelEventRegistration,
-  getEventGroupById,
-  getBracket,
   getEventById,
-  getLeaderboard,
+  getEventGroupById,
   listEventGroups,
   listEvents,
   registerForSoloEvent,
   registerTeamForEvent
 } from "../services/event.service";
 
-export const listEventGroupsController = async (req: Request, res: Response) => {
-  const eventGroups = await listEventGroups(req.user?.id, req.query as never);
-  res.status(200).json(eventGroups);
-};
-
-export const getEventGroupByIdController = async (req: Request, res: Response) => {
-  const eventGroup = await getEventGroupById(String(req.params.groupId), req.user?.id);
-  res.status(200).json(eventGroup);
-};
-
 export const listEventsController = async (req: Request, res: Response) => {
   const events = await listEvents(req.user?.id, req.query as never);
   res.status(200).json(events);
+};
+
+export const listEventGroupsController = async (req: Request, res: Response) => {
+  const groups = await listEventGroups(req.user?.id);
+  res.status(200).json(groups);
+};
+
+export const getEventGroupByIdController = async (req: Request, res: Response) => {
+  const group = await getEventGroupById(String(req.params.groupId), req.user?.id);
+  res.status(200).json(group);
 };
 
 export const getEventByIdController = async (req: Request, res: Response) => {
@@ -45,14 +43,4 @@ export const registerTeamForEventController = async (req: Request, res: Response
 export const cancelEventRegistrationController = async (req: Request, res: Response) => {
   const registration = await cancelEventRegistration(String(req.params.eventId), req.user!.id);
   res.status(200).json(registration);
-};
-
-export const getBracketController = async (req: Request, res: Response) => {
-  const bracket = await getBracket(String(req.params.eventId));
-  res.status(200).json(bracket);
-};
-
-export const getLeaderboardController = async (req: Request, res: Response) => {
-  const leaderboard = await getLeaderboard(String(req.params.eventId));
-  res.status(200).json(leaderboard);
 };

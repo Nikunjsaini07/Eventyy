@@ -5,15 +5,24 @@ export const validate =
   (schema: { body?: ZodTypeAny; query?: ZodTypeAny; params?: ZodTypeAny }) =>
   (req: Request, _res: Response, next: NextFunction) => {
     if (schema.body) {
-      req.body = schema.body.parse(req.body);
+      Object.defineProperty(req, "body", {
+        value: schema.body.parse(req.body),
+        enumerable: true
+      });
     }
 
     if (schema.query) {
-      req.query = schema.query.parse(req.query) as Request["query"];
+      Object.defineProperty(req, "query", {
+        value: schema.query.parse(req.query),
+        enumerable: true
+      });
     }
 
     if (schema.params) {
-      req.params = schema.params.parse(req.params) as Request["params"];
+      Object.defineProperty(req, "params", {
+        value: schema.params.parse(req.params),
+        enumerable: true
+      });
     }
 
     next();

@@ -2,10 +2,8 @@ import { Router } from "express";
 
 import {
   cancelEventRegistrationController,
-  getBracketController,
   getEventByIdController,
   getEventGroupByIdController,
-  getLeaderboardController,
   listEventGroupsController,
   listEventsController,
   registerForSoloEventController,
@@ -16,8 +14,7 @@ import { validate } from "../middlewares/validate.middleware";
 import { asyncHandler } from "../utils/async-handler";
 import {
   eventIdParamsSchema,
-  eventGroupIdParamsSchema,
-  listEventGroupsQuerySchema,
+  groupIdParamsSchema,
   listEventsQuerySchema,
   soloRegistrationSchema,
   teamRegistrationSchema
@@ -28,14 +25,13 @@ const router = Router();
 router.get(
   "/groups",
   optionalAuth,
-  validate({ query: listEventGroupsQuerySchema }),
   asyncHandler(listEventGroupsController)
 );
 
 router.get(
   "/groups/:groupId",
   optionalAuth,
-  validate({ params: eventGroupIdParamsSchema }),
+  validate({ params: groupIdParamsSchema }),
   asyncHandler(getEventGroupByIdController)
 );
 
@@ -72,18 +68,6 @@ router.delete(
   requireAuth,
   validate({ params: eventIdParamsSchema }),
   asyncHandler(cancelEventRegistrationController)
-);
-
-router.get(
-  "/:eventId/bracket",
-  validate({ params: eventIdParamsSchema }),
-  asyncHandler(getBracketController)
-);
-
-router.get(
-  "/:eventId/leaderboard",
-  validate({ params: eventIdParamsSchema }),
-  asyncHandler(getLeaderboardController)
 );
 
 export default router;

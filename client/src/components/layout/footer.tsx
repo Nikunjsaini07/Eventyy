@@ -1,105 +1,66 @@
 import { Link } from "react-router-dom";
-import { Sparkles, ExternalLink, Mail, MapPin } from "lucide-react";
+import { CalendarDays, Clock3, GraduationCap } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="border-t border-border bg-surface">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Brand */}
-          <div className="md:col-span-1">
-            <Link to="/" className="flex items-center gap-3 mb-4">
-              <div className="w-9 h-9 border border-primary bg-primary/5 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-primary" />
+    <footer className="border-t border-white/10 bg-[#050505]">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr]">
+          <div>
+            <Link to="/" className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 text-primary shadow-sm">
+                <CalendarDays className="h-5 w-5" />
               </div>
-              <span className="text-xl font-bold text-white tracking-tight">
-                Eventyy
-              </span>
+              <div>
+                <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-primary">Shobhit University</p>
+                <p className="text-sm font-semibold text-white">Gangoh Events</p>
+              </div>
             </Link>
-            <p className="text-sm text-text-muted leading-relaxed font-mono">
-              University events, competitions, and fests — all in one place.
+            <p className="mt-4 max-w-md text-sm leading-7 text-white/50">
+              The official event management platform for campus fests, cultural showcases, technical competitions and student activities at Shobhit University Gangoh.
             </p>
           </div>
 
-          {/* Quick Links */}
           <div>
-            <h3 className="text-xs font-bold text-primary font-mono mb-4 uppercase tracking-widest">
-              Quick Links
-            </h3>
-            <ul className="space-y-3">
-              {[
-                { to: "/events", label: "Events" },
-                { to: "/leaderboard", label: "Leaderboard" },
-                { to: "/contact", label: "Contact" },
-              ].map((link) => (
-                <li key={link.to}>
-                  <Link
-                    to={link.to}
-                    className="text-sm text-text-muted hover:text-primary transition-colors font-mono uppercase tracking-wider"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <p className="text-xs font-mono uppercase tracking-[0.22em] text-primary">Navigate</p>
+            <div className="mt-4 space-y-3 text-sm text-white/50">
+              <Link to="/events" className="block hover:text-white transition-colors">
+                Events
+              </Link>
+              <Link to="/schedule" className="block hover:text-white transition-colors">
+                Schedule
+              </Link>
+              <Link to="/my-events" className="block hover:text-white transition-colors">
+                My Events
+              </Link>
+              <Link to="/contact" className="block hover:text-white transition-colors">
+                Contact
+              </Link>
+            </div>
           </div>
 
-          {/* Event Types */}
           <div>
-            <h3 className="text-xs font-bold text-primary font-mono mb-4 uppercase tracking-widest">
-              Event Types
-            </h3>
-            <ul className="space-y-3 text-sm text-text-muted font-mono">
-              <li>⚔️ PVP Competitions</li>
-              <li>🏆 Ranked Events</li>
-              <li>🎉 Visiting Events</li>
-              <li>👥 Solo & Team</li>
-            </ul>
-          </div>
-
-          {/* Contact */}
-          <div>
-            <h3 className="text-xs font-bold text-primary font-mono mb-4 uppercase tracking-widest">
-              Get in Touch
-            </h3>
-            <ul className="space-y-3">
-              <li>
-                <a
-                  href="mailto:contact@eventyy.com"
-                  className="flex items-center gap-2 text-sm text-text-muted hover:text-primary transition-colors font-mono"
-                >
-                  <Mail className="w-4 h-4" />
-                  contact@eventyy.com
-                </a>
-              </li>
-              <li className="flex items-center gap-2 text-sm text-text-muted font-mono">
-                <MapPin className="w-4 h-4" />
-                University Campus
-              </li>
-              <li>
-                <a
-                  href="https://github.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-text-muted hover:text-primary transition-colors font-mono"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  GitHub
-                </a>
-              </li>
-            </ul>
+            <p className="text-xs font-mono uppercase tracking-[0.22em] text-primary">Highlights</p>
+            <div className="mt-4 space-y-4 text-sm text-white/50">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="h-4 w-4 text-primary" />
+                Shobhit University Gangoh identity
+              </div>
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-primary" />
+                Event-focused browsing
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock3 className="h-4 w-4 text-primary" />
+                Schedule-first discovery
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="mt-10 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-[10px] text-text-dim font-mono tracking-widest uppercase">
-            © {new Date().getFullYear()} Eventyy. Built for universities.
-          </p>
-          <div className="flex items-center gap-4">
-            <span className="text-[10px] text-text-dim font-mono tracking-widest uppercase">
-              Made with 💚
-            </span>
-          </div>
+        <div className="mt-10 border-t border-white/10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-white/30">
+          <p>© {new Date().getFullYear()} Shobhit University Gangoh Events. All rights reserved.</p>
+          <p className="text-[10px] uppercase font-mono tracking-[0.2em] text-white/30">dev - Nikunj Saini, Shreya, Vidhi</p>
         </div>
       </div>
     </footer>

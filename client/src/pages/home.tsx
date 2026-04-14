@@ -1,57 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, type Variants } from "framer-motion";
-import {
-  CalendarDays,
-  Users,
-  Trophy,
-  ArrowRight,
-  Zap,
-  Star,
-  Sparkles,
-  ChevronRight,
-  Clock,
-  MapPin,
-} from "lucide-react";
+import { CalendarDays, CreditCard, MapPin, Sparkles, Users } from "lucide-react";
+
 import api from "@/lib/api";
+import { formatDate } from "@/lib/utils";
 import type { Event } from "@/types";
-import { cn, formatDate } from "@/lib/utils";
 
-const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: i * 0.1, duration: 0.5, ease: "easeOut" },
-  }),
-};
-
-const stats = [
-  { label: "EVENTS HOSTED", value: "50+", icon: CalendarDays },
-  { label: "PARTICIPANTS", value: "2000+", icon: Users },
-  { label: "COMPETITIONS", value: "30+", icon: Trophy },
-  { label: "UNIVERSITIES", value: "10+", icon: Star },
-];
-
-const steps = [
+const aboutSections = [
   {
-    num: "01",
-    title: "DISCOVER",
-    desc: "Browse upcoming fests, competitions, and college events.",
-    icon: Sparkles,
+    eyebrow: "The Experience",
+    title: "A campus festival home, not just an event list.",
+    description:
+      "We're shaping this platform around the energy of Shobhit University Gangoh. It should feel like one destination where the whole festival comes alive, while registrations and student flows stay simple underneath."
   },
   {
-    num: "02",
-    title: "REGISTER",
-    desc: "Solo or with your team - sign up instantly with simple OTP.",
-    icon: Zap,
-  },
-  {
-    num: "03",
-    title: "COMPETE",
-    desc: "Participate in brackets and climb the leaderboard.",
-    icon: Trophy,
-  },
+    eyebrow: "The Campus",
+    title: "Shobhit University Gangoh",
+    description:
+      "From cultural showcases to technical competitions, every event belongs to the larger university experience. The goal is a cleaner public-facing site with the same warmth and scale as a proper fest website."
+  }
 ];
 
 export default function HomePage() {
@@ -59,275 +26,251 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let ignore = false;
+
     api
       .get("/events")
-      .then((res) => setEvents(res.data.slice(0, 6)))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .then((response) => {
+        if (!ignore) {
+          setEvents(response.data);
+        }
+      })
+      .catch(() => {
+        if (!ignore) {
+          setEvents([]);
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, []);
 
+  const featuredEvents = useMemo(() => events.slice(0, 6), [events]);
+
+  const stats = useMemo(
+    () => [
+      { label: "Published Events", value: String(events.length) },
+      { label: "Team Friendly", value: String(events.filter((event) => event.participationType === "TEAM").length) },
+      { label: "Paid Entries", value: String(events.filter((event) => event.requiresPayment).length) }
+    ],
+    [events]
+  );
+
+  const schedulePreview = useMemo(() => {
+    return [...events]
+      .filter((event) => event.startsAt)
+      .sort((left, right) => new Date(left.startsAt!).getTime() - new Date(right.startsAt!).getTime())
+      .slice(0, 4);
+  }, [events]);
+
   return (
-    <div className="overflow-hidden bg-background">
-      {/* Hero Section */}
-      <section className="relative min-h-[95vh] flex items-center border-b border-border bg-grid">
-        {/* Glow behind text */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-primary/10 blur-[120px] pointer-events-none" />
+    <div className="bg-[#020202] text-white">
+      {/* ─── HERO SECTION ─── */}
+      <section className="relative overflow-hidden border-b border-white/10 min-h-[90vh] flex items-center">
+        {/* Background image */}
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-[#020202]" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full pt-20">
-          <div className="max-w-4xl mx-auto text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-2 px-4 py-2 border border-primary/30 bg-primary/5 text-xs font-mono text-primary mb-8 tracking-widest uppercase"
-            >
-              <Sparkles className="w-3 h-3" />
-              Event Management Platform
-            </motion.div>
+        <div className="relative mx-auto flex w-full max-w-7xl flex-col items-center justify-center gap-12 px-4 py-24 text-center sm:px-6 lg:px-8">
+          <div className="flex flex-col items-center max-w-4xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-primary backdrop-blur-sm">
+              <Sparkles className="h-3.5 w-3.5" />
+              Shobhit University Gangoh
+            </div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-6xl sm:text-7xl lg:text-8xl font-black leading-[1.1] tracking-tighter uppercase text-white"
-            >
-              Where Campus
-              <br />
-              <span className="text-glow text-primary">Comes Alive</span>
-            </motion.h1>
+            <h1 className="mt-8 text-5xl font-black tracking-tight text-white sm:text-6xl lg:text-[5.5rem] drop-shadow-xl leading-[1.1]">
+              Campus events & fest experiences
+            </h1>
+            <p className="mt-6 font-cursive text-4xl text-white/80 md:text-5xl drop-shadow-md">
+              Where students come together
+            </p>
+            <p className="mt-6 max-w-2xl text-base leading-8 text-white/60 sm:text-lg">
+              Browse events, follow the schedule, register for competitions, and keep track of everything happening at your university — all in one place.
+            </p>
 
-            <motion.p
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
-              className="mt-8 text-lg sm:text-xl text-text-muted max-w-2xl mx-auto font-medium"
-            >
-              Discover epic fests, compete in PVP brackets, climb ranked leaderboards, and make unforgettable college memories.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.3 }}
-              className="mt-12 flex flex-col sm:flex-row justify-center gap-4 sm:gap-6"
-            >
+            <div className="mt-10 flex flex-col gap-4 sm:flex-row justify-center w-full max-w-xl">
               <Link
                 to="/events"
-                className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-primary text-black font-bold font-mono tracking-widest text-sm hover:bg-primary-light transition-colors group"
+                className="flex-1 inline-flex items-center justify-center rounded-lg bg-primary px-8 py-4 text-sm font-bold uppercase tracking-[0.1em] text-white transition-all hover:bg-primary-dark hover:shadow-[0_0_30px_rgba(255,86,101,0.3)]"
               >
-                EXPLORE EVENTS
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                Explore Events
               </Link>
               <Link
-                to="/leaderboard"
-                className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-surface text-white border border-border font-bold font-mono tracking-widest text-sm hover:bg-border transition-colors"
+                to="/schedule"
+                className="flex-1 inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/5 px-8 py-4 text-sm font-bold uppercase tracking-[0.1em] text-white backdrop-blur-sm transition-all hover:bg-white/10"
               >
-                LEADERBOARD
-                <Trophy className="w-4 h-4" />
+                View Schedule
               </Link>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats - Grid layout */}
-      <section className="border-b border-border bg-surface">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-border">
-            {stats.map((stat, i) => (
-              <motion.div
-                key={stat.label}
-                custom={i}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                variants={fadeUp}
-                className="p-8 sm:p-12 text-center group hover:bg-surface-light transition-colors relative overflow-hidden"
-              >
-                <div className="relative z-10">
-                  <stat.icon className="w-6 h-6 mx-auto mb-4 text-primary opacity-80 group-hover:opacity-100 transition-opacity" />
-                  <div className="text-4xl sm:text-5xl font-black text-white font-mono tracking-tighter mb-2">{stat.value}</div>
-                  <div className="text-xs font-bold text-text-muted font-mono tracking-widest">{stat.label}</div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Events */}
-      <section className="py-24 relative">
-        <div className="absolute top-0 right-0 w-1/3 h-[500px] bg-grid opacity-30 pointer-events-none mask-image:linear-gradient(to_bottom,black,transparent)" />
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="flex flex-col sm:flex-row items-baseline justify-between mb-16 gap-6">
-            <div>
-              <h2 className="text-4xl font-black text-white tracking-tighter uppercase">Upcoming Events</h2>
-              <p className="text-primary font-mono text-sm tracking-widest mt-2 uppercase">Systems online. Action pending.</p>
             </div>
-            <Link
-              to="/events"
-              className="inline-flex items-center gap-2 text-primary hover:text-white transition-colors text-sm font-mono tracking-widest font-bold group"
-            >
-              VIEW ALL
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+
+            <div className="mt-16 grid grid-cols-3 gap-8 text-white w-full max-w-3xl">
+              {stats.map((stat) => (
+                <div key={stat.label} className="flex flex-col items-center rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+                  <p className="text-3xl font-black">{stat.value}</p>
+                  <p className="mt-2 text-xs font-mono uppercase tracking-[0.15em] text-white/50">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── ABOUT SECTION ─── */}
+      <section className="border-b border-white/10 py-16">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+          {aboutSections.map((section) => (
+            <div key={section.title} className="rounded-[2rem] border border-white/10 bg-[#070707] p-8 shadow-sm">
+              <p className="text-xs font-mono uppercase tracking-[0.22em] text-primary">{section.eyebrow}</p>
+              <h2 className="mt-4 text-3xl font-black tracking-tight text-white">{section.title}</h2>
+              <p className="mt-4 text-sm leading-7 text-white/60">{section.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── FEATURED EVENTS ─── */}
+      <section className="py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-mono uppercase tracking-[0.22em] text-primary">Upcoming events</p>
+              <h2 className="mt-3 text-4xl font-black tracking-tight text-white">What students can join right now</h2>
+            </div>
+            <Link to="/events" className="text-sm font-semibold text-primary hover:text-primary-light transition-colors">
+              View all events →
             </Link>
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-80 border border-border bg-surface animate-pulse" />
+            <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {[1, 2, 3].map((item) => (
+                <div key={item} className="h-72 animate-pulse rounded-[2rem] border border-white/10 bg-white/[0.03]" />
               ))}
             </div>
-          ) : events.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {events.map((event, i) => (
-                <motion.div
-                  key={event.id}
-                  custom={i}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  variants={fadeUp}
-                >
-                  <Link
-                    to={`/events/${event.id}`}
-                    className="block group h-full"
-                  >
-                    <div className="h-full bg-surface border border-border hover:border-primary transition-colors flex flex-col relative overflow-hidden">
-                      {/* Top Graphic */}
-                      <div className="h-40 bg-surface-lighter border-b border-border relative flex items-center justify-center overflow-hidden">
-                        <div className="absolute inset-0 bg-dot opacity-30" />
-                        <div className="text-5xl font-black text-surface-light group-hover:text-border transition-colors uppercase tracking-tighter absolute -right-4 -bottom-4 select-none">
-                          {event.type}
-                        </div>
-                        
-                        <div className="absolute top-4 right-4 relative z-10">
-                          <span className="px-3 py-1 text-[10px] font-mono tracking-widest uppercase border border-primary/50 text-primary bg-primary/10">
-                            {event.type}
-                          </span>
-                        </div>
-                        
-                        {event.participationType === "TEAM" && (
-                          <div className="absolute top-4 left-4 relative z-10">
-                            <span className="px-3 py-1 text-[10px] font-mono tracking-widest uppercase border border-border text-text bg-background">
-                              <Users className="w-3 h-3 inline mr-1 mb-[1px]" />
-                              Team
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className="p-6 flex-1 flex flex-col">
-                        <h3 className="text-xl font-bold text-white uppercase group-hover:text-primary transition-colors mb-2">
-                          {event.title}
-                        </h3>
-                        {event.description && (
-                          <p className="text-sm text-text-muted line-clamp-2 mb-6">
-                            {event.description}
-                          </p>
-                        )}
-                        
-                        <div className="mt-auto pt-4 border-t border-border flex flex-col gap-3 text-xs text-text-dim font-mono uppercase tracking-wider">
-                          {event.startsAt && (
-                            <span className="flex items-center gap-2">
-                              <Clock className="w-3.5 h-3.5 text-primary" />
-                              {formatDate(event.startsAt)}
-                            </span>
-                          )}
-                          {event.venue && (
-                            <span className="flex items-center gap-2">
-                              <MapPin className="w-3.5 h-3.5 text-primary" />
-                              {event.venue}
-                            </span>
-                          )}
-                          {event.requiresPayment && event.entryFee && (
-                            <span className="flex items-center gap-2 mt-1 py-1 text-primary">
-                              <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse-slow" />
-                              FEE: ₹{event.entryFee}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
+          ) : featuredEvents.length === 0 ? (
+            <div className="mt-10 rounded-[2rem] border border-dashed border-white/10 bg-white/[0.03] px-6 py-16 text-center">
+              <CalendarDays className="mx-auto h-10 w-10 text-white/30" />
+              <h3 className="mt-4 text-lg font-semibold text-white">No published events yet</h3>
+              <p className="mt-2 text-sm text-white/50">As soon as the first events go live, they'll appear here.</p>
             </div>
           ) : (
-            <div className="text-center py-24 border border-border border-dashed">
-              <CalendarDays className="w-12 h-12 mx-auto mb-4 text-border" />
-              <p className="text-lg font-mono text-text-muted uppercase tracking-widest">No Active Parameters</p>
-              <p className="text-sm mt-2 text-text-dim">Systems stand by for new events.</p>
+            <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {featuredEvents.map((event) => (
+                <Link
+                  key={event.id}
+                  to={`/events/${event.id}`}
+                  className="group overflow-hidden rounded-[2rem] border border-white/10 bg-[#070707] shadow-sm transition-all hover:-translate-y-1 hover:border-primary/40"
+                >
+                  <div className="h-44 bg-[linear-gradient(135deg,#ff5665,#10183c)]" />
+                  <div className="p-6">
+                    <div className="flex flex-wrap gap-2">
+                      <Badge>{event.participationType}</Badge>
+                      <Badge tone={event.requiresPayment ? "warning" : "success"}>
+                        {event.requiresPayment ? "Paid" : "Free"}
+                      </Badge>
+                    </div>
+                    <h3 className="mt-4 text-2xl font-bold text-white transition-colors group-hover:text-primary">
+                      {event.title}
+                    </h3>
+                    <p className="mt-3 line-clamp-3 text-sm leading-6 text-white/50">
+                      {event.description || "Details for this event will appear here once the admin adds them."}
+                    </p>
+                    <div className="mt-5 space-y-2 text-sm text-white/40">
+                      <p>{event.startsAt ? formatDate(event.startsAt) : "Date coming soon"}</p>
+                      <p>{event.venue || "Venue to be announced"}</p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
             </div>
           )}
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="py-24 border-y border-border bg-surface">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tighter uppercase">Execution Sequence</h2>
-            <p className="text-primary font-mono text-sm tracking-widest mt-3 uppercase">Three steps to integration</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border border-border text-center divide-y md:divide-y-0 md:divide-x divide-border bg-background">
-            {steps.map((step, i) => (
-              <motion.div
-                key={step.num}
-                custom={i}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                variants={fadeUp}
-                className="p-10 relative group hover:bg-surface transition-colors"
-              >
-                <div className="absolute top-4 left-4 text-border font-black text-5xl opacity-40 group-hover:text-primary/20 group-hover:scale-110 transition-all font-mono pointer-events-none">
-                  {step.num}
-                </div>
-                <div className="inline-flex items-center justify-center w-12 h-12 border border-border bg-surface mb-6 relative z-10 group-hover:border-primary transition-colors">
-                  <step.icon className="w-5 h-5 text-primary" />
-                </div>
-                <h3 className="text-lg font-bold text-white mb-3 uppercase tracking-wider relative z-10">{step.title}</h3>
-                <p className="text-sm text-text-muted leading-relaxed font-mono relative z-10">{step.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-32 bg-background relative border-b border-border overflow-hidden">
-        <div className="absolute inset-0 bg-grid opacity-50" />
-        <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="p-12 border border-primary/30 bg-primary/5 backdrop-blur-[2px]"
-          >
-            <h2 className="text-4xl sm:text-5xl font-black text-white tracking-tighter uppercase mb-6">
-              Initialize <span className="text-primary">Sequence</span>
-            </h2>
-            <p className="text-text-muted font-mono leading-relaxed mb-10 max-w-xl mx-auto">
-              Terminal ready. Authenticate to access events, deploy teams, and view the global standings.
-            </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-6">
-              <Link
-                to="/login"
-                className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-primary text-black font-bold font-mono tracking-widest text-sm hover:bg-primary-light transition-colors group"
-              >
-                AUTHENTICATE
-                <Zap className="w-4 h-4 group-hover:scale-110 transition-transform" />
-              </Link>
+      {/* ─── SCHEDULE PREVIEW ─── */}
+      <section className="border-t border-white/10 bg-[#050505] py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-mono uppercase tracking-[0.22em] text-primary">Schedule preview</p>
+              <h2 className="mt-3 text-4xl font-black tracking-tight text-white">A simpler timeline view</h2>
             </div>
-          </motion.div>
+            <Link to="/schedule" className="text-sm font-semibold text-primary hover:text-primary-light transition-colors">
+              Open full schedule →
+            </Link>
+          </div>
+
+          <div className="mt-10 grid gap-5 lg:grid-cols-2">
+            {schedulePreview.length === 0 ? (
+              <div className="rounded-[2rem] border border-dashed border-white/10 bg-white/[0.03] px-6 py-12 text-sm text-white/50">
+                Event dates will show here once published events include a schedule.
+              </div>
+            ) : (
+              schedulePreview.map((event, index) => (
+                <div key={event.id} className="rounded-[2rem] border border-white/10 bg-[#070707] p-6 shadow-sm">
+                  <div className="flex items-start gap-5">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                      <span className="text-lg font-black">{String(index + 1).padStart(2, "0")}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-mono uppercase tracking-[0.18em] text-white/40">
+                        {event.startsAt ? formatDate(event.startsAt) : "Date coming soon"}
+                      </p>
+                      <h3 className="mt-2 text-xl font-bold text-white">{event.title}</h3>
+                      <p className="mt-2 text-sm text-white/50">{event.venue || "Venue to be announced"}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </section>
     </div>
   );
+}
+
+function MiniHighlight({
+  icon: Icon,
+  label,
+  text
+}: {
+  icon: typeof CalendarDays;
+  label: string;
+  text: string;
+}) {
+  return (
+    <div className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-white">{label}</p>
+        <p className="mt-1 text-sm leading-6 text-white/50">{text}</p>
+      </div>
+    </div>
+  );
+}
+
+function Badge({
+  children,
+  tone = "default"
+}: {
+  children: string;
+  tone?: "default" | "success" | "warning";
+}) {
+  const classes =
+    tone === "success"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+      : tone === "warning"
+        ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+        : "border-white/10 bg-white/[0.04] text-white/60";
+
+  return <span className={`rounded-full border px-3 py-1 text-[11px] font-medium ${classes}`}>{children}</span>;
 }

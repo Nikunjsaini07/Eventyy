@@ -6,7 +6,7 @@ export default function RootLayout() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <main className="flex-1 pt-16">
+      <main className="flex-1 pt-[4.5rem]">
         <Outlet />
       </main>
       <Footer />

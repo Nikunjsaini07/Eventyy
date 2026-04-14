@@ -15,6 +15,17 @@ export const reviewUniversityBadgeSchema = z.object({
   notes: z.string().trim().max(300).optional()
 });
 
+export const adminUserParamsSchema = z.object({
+  userId: z.string().cuid()
+});
+
 export const deleteMyAccountSchema = z.object({
   code: z.string().trim().length(6)
+});
+
+export const createAdminSchema = z.object({
+  email: z.string().trim().email(),
+  password: z.string().min(8).max(100),
+  fullName: z.string().trim().min(2).max(120),
+  phone: z.string().trim().min(6).max(20).optional()
 });

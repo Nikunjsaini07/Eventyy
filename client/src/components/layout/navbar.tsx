@@ -1,296 +1,221 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Menu,
-  X,
-  Home,
-  CalendarDays,
-  Trophy,
-  Mail,
-  User,
-  LogIn,
-  LogOut,
-  LayoutDashboard,
-  Shield,
-  Sparkles,
-  Bell,
-  Activity,
-} from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Briefcase, CalendarDays, ChevronDown, ListChecks, LogIn, LogOut, Menu, User, X } from "lucide-react";
+
 import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
 
-const navLinks = [
-  { to: "/", label: "Home", icon: Home },
-  { to: "/events", label: "Events", icon: CalendarDays },
-  { to: "/contact", label: "Contact", icon: Mail },
+const publicLinks = [
+  { to: "/events", label: "Events" },
+  { to: "/schedule", label: "Schedule" }
 ];
 
 export default function Navbar() {
-  const { user, logout, isCoordinator, isAdmin } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileOpen(false);
+    setMenuOpen(false);
+  }, [location.pathname]);
+
+  const isCoordinator = user?.effectiveRoles?.includes("COORDINATOR") ?? false;
+
+  const navLinks = [...publicLinks, ...(user ? [{ to: "/my-events", label: "My Events" }] : [])];
 
   const handleLogout = () => {
     logout();
-    setProfileOpen(false);
     navigate("/");
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 border border-primary bg-primary/5 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-              <Sparkles className="w-4 h-4 text-primary" />
-            </div>
-            <span className="text-xl font-bold text-white tracking-tight hidden sm:block">
-              Eventyy
-            </span>
-          </Link>
+    <nav className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#020202]/90 backdrop-blur-xl">
+      <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <Link to="/" className="flex items-center gap-3">
+          <div className="flex h-12 items-center justify-center rounded-lg bg-white/5 py-1 px-3 shadow-sm border border-white/10">
+            <img src="/shobhit-logo.png" alt="Shobhit University Logo" className="h-8 w-auto object-contain" />
+          </div>
+        </Link>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => {
-              const isActive = location.pathname === link.to;
-              return (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative",
-                    isActive
-                      ? "text-white"
-                      : "text-text-muted hover:text-white hover:bg-surface-light"
-                  )}
-                >
-                  {isActive && (
-                    <motion.div
-                      layoutId="nav-active"
-                      className="absolute inset-0 rounded-lg bg-surface-light border border-border"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
-                    />
-                  )}
-                  <span className="relative z-10 flex items-center gap-2">
-                    <link.icon className="w-4 h-4" />
-                    {link.label}
-                  </span>
-                </Link>
-              );
-            })}
-
-            {user && (
+        <div className="hidden items-center gap-2 md:flex">
+          {navLinks.map((link) => {
+            const active = location.pathname === link.to;
+            return (
               <Link
-                to="/my-events"
+                key={link.to}
+                to={link.to}
                 className={cn(
-                  "px-4 py-2 text-xs font-mono tracking-widest uppercase transition-all duration-200 flex items-center gap-2",
-                  location.pathname.startsWith("/my-events")
-                    ? "text-primary border border-primary bg-primary/10"
-                    : "text-text-muted hover:text-primary"
+                  "rounded-full px-4 py-2.5 text-sm font-medium transition-colors",
+                  active
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "text-white/60 hover:bg-white/5 hover:text-white"
                 )}
               >
-                <Activity className="w-4 h-4" />
-                MY EVENTS
+                {link.label}
               </Link>
-            )}
-
-            {isAdmin && (
-              <Link
-                to="/admin"
-                className={cn(
-                  "px-4 py-2 text-xs font-mono tracking-widest uppercase transition-all duration-200 flex items-center gap-2",
-                  location.pathname.startsWith("/admin")
-                    ? "text-danger border border-danger bg-danger/10"
-                    : "text-text-muted hover:text-danger"
-                )}
-              >
-                <Shield className="w-4 h-4" />
-                ADMIN
-              </Link>
-            )}
-          </div>
-
-          {/* Right side */}
-          <div className="hidden md:flex items-center gap-3">
-            {user ? (
-              <div className="flex items-center gap-2">
-                <button
-                  className="p-2 text-text-muted hover:text-primary transition-colors relative"
-                  aria-label="Notifications"
-                >
-                  <Bell className="w-5 h-5" />
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
-                </button>
-                <div className="relative">
-                <button
-                  onClick={() => setProfileOpen(!profileOpen)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-surface-light transition-colors"
-                >
-                  <div className="w-8 h-8 border border-primary bg-primary/10 flex items-center justify-center text-primary text-sm font-bold font-mono">
-                    {user.fullName?.[0]?.toUpperCase() ?? "U"}
-                  </div>
-                  <span className="text-sm font-medium text-text max-w-[120px] truncate">
-                    {user.fullName}
-                  </span>
-                </button>
-
-                <AnimatePresence>
-                  {profileOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: -5 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: -5 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2 w-56 bg-surface border border-border shadow-2xl overflow-hidden"
-                    >
-                      <div className="px-4 py-3 border-b border-border">
-                        <p className="text-sm font-semibold text-text">{user.fullName}</p>
-                        <p className="text-xs text-text-muted truncate">{user.email}</p>
-                      </div>
-                      <div className="py-1">
-                        <Link
-                          to="/profile"
-                          onClick={() => setProfileOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-text-muted hover:text-white hover:bg-surface-light transition-colors"
-                        >
-                          <User className="w-4 h-4" />
-                          Profile
-                        </Link>
-                        <button
-                          onClick={handleLogout}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors"
-                        >
-                          <LogOut className="w-4 h-4" />
-                          Logout
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-            ) : (
-              <div className="flex items-center gap-4">
-                <Link
-                  to="/login"
-                  className="text-sm font-mono text-text-muted hover:text-white transition-colors flex items-center gap-2"
-                >
-                  <LogIn className="w-4 h-4" />
-                  LOGIN
-                </Link>
-                <Link
-                  to="/signup"
-                  className="px-5 py-2 border border-primary bg-primary/10 text-primary text-sm font-mono tracking-wider hover:bg-primary hover:text-black transition-all"
-                >
-                  SIGN UP
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* Mobile toggle */}
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-surface-light transition-colors"
-          >
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+            );
+          })}
+          {isCoordinator && (
+            <Link
+              to="/coordinator"
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors",
+                location.pathname === "/coordinator"
+                  ? "bg-primary/15 text-primary border border-primary/30"
+                  : "text-primary/80 hover:bg-primary/10 hover:text-primary border border-primary/20"
+              )}
+            >
+              <ListChecks className="h-4 w-4" />
+              Coordinator
+            </Link>
+          )}
         </div>
+
+        <div className="hidden items-center gap-3 md:flex">
+          {user ? (
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen((current) => !current)}
+                className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-2 shadow-sm transition-colors hover:border-primary/30"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                  {user.fullName?.[0]?.toUpperCase() ?? "U"}
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-white">{user.fullName}</p>
+                  <p className="text-xs text-white/50">{isAdmin ? "Admin" : isCoordinator ? "Coordinator" : "Student"}</p>
+                </div>
+                <ChevronDown className="h-4 w-4 text-white/40" />
+              </button>
+
+              <AnimatePresence>
+                {menuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.18 }}
+                    className="absolute right-0 mt-3 w-64 overflow-hidden rounded-3xl border border-white/10 bg-[#0a0a0a] shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+                  >
+                    <div className="border-b border-white/10 px-5 py-4">
+                      <p className="text-sm font-semibold text-white">{user.fullName}</p>
+                      <p className="mt-1 text-xs text-white/50">{user.email}</p>
+                    </div>
+                    <div className="p-2">
+                      <Link
+                        to="/profile"
+                        className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-white/60 transition-colors hover:bg-white/5 hover:text-white"
+                      >
+                        <User className="h-4 w-4" />
+                        Profile
+                      </Link>
+                      {isCoordinator && (
+                        <Link
+                          to="/coordinator"
+                          className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-white/60 transition-colors hover:bg-white/5 hover:text-white"
+                        >
+                          <ListChecks className="h-4 w-4" />
+                          Coordinator Desk
+                        </Link>
+                      )}
+                      {isAdmin && (
+                        <Link
+                          to="/admin"
+                          className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-white/60 transition-colors hover:bg-white/5 hover:text-white"
+                        >
+                          <Briefcase className="h-4 w-4" />
+                          Admin Console
+                        </Link>
+                      )}
+                      <button
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm text-rose-400 transition-colors hover:bg-rose-500/10"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Logout
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-dark"
+            >
+              <LogIn className="h-4 w-4" />
+              Login
+            </Link>
+          )}
+        </div>
+
+        <button
+          onClick={() => setMobileOpen((current) => !current)}
+          className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white shadow-sm md:hidden"
+          aria-label="Toggle navigation"
+        >
+          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
       </div>
 
-      {/* Mobile menu */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
-            className="md:hidden overflow-hidden bg-surface border-b border-border"
+            className="overflow-hidden border-t border-white/10 bg-[#050505] md:hidden"
           >
-            <div className="px-4 py-4 space-y-1">
+            <div className="space-y-1 px-4 py-4">
               {navLinks.map((link) => (
                 <Link
                   key={link.to}
                   to={link.to}
-                  onClick={() => setMobileOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                    location.pathname === link.to
-                      ? "text-white bg-surface-light"
-                      : "text-text-muted hover:text-white hover:bg-surface-light"
+                    "block rounded-2xl px-4 py-3 text-sm font-medium",
+                    location.pathname === link.to ? "bg-white/10 text-white shadow-sm" : "text-white/60"
                   )}
                 >
-                  <link.icon className="w-4 h-4" />
                   {link.label}
                 </Link>
               ))}
 
-              {user && (
+              {user ? (
+                <>
+                  <Link to="/profile" className="block rounded-2xl px-4 py-3 text-sm font-medium text-white/60">
+                    Profile
+                  </Link>
+                  {isCoordinator && (
+                    <Link to="/coordinator" className="block rounded-2xl px-4 py-3 text-sm font-medium text-white/60">
+                      Coordinator Desk
+                    </Link>
+                  )}
+                  {isAdmin && (
+                    <Link to="/admin" className="block rounded-2xl px-4 py-3 text-sm font-medium text-white/60">
+                      Admin Console
+                    </Link>
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full rounded-2xl px-4 py-3 text-left text-sm font-medium text-rose-400"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
                 <Link
-                  to="/my-events"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-primary"
+                  to="/login"
+                  className="mt-2 block rounded-2xl bg-primary px-4 py-3 text-center text-sm font-semibold text-white"
                 >
-                  <Activity className="w-4 h-4" />
-                  My Events
+                  Login
                 </Link>
               )}
-
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-warning"
-                >
-                  <Shield className="w-4 h-4" />
-                  Admin Panel
-                </Link>
-              )}
-
-              <div className="pt-3 border-t border-border">
-                {user ? (
-                  <>
-                    <Link
-                      to="/profile"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-text-muted hover:text-white"
-                    >
-                      <User className="w-4 h-4" />
-                      Profile
-                    </Link>
-                    <button
-                      onClick={() => { handleLogout(); setMobileOpen(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-danger"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Logout
-                    </button>
-                  </>
-                ) : (
-                  <div className="space-y-2">
-                    <Link
-                      to="/login"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center justify-center gap-2 px-4 py-3 border border-border bg-surface text-text-muted hover:text-white text-sm font-mono tracking-wider transition-all"
-                    >
-                      <LogIn className="w-4 h-4" />
-                      LOGIN
-                    </Link>
-                    <Link
-                      to="/signup"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center justify-center gap-2 px-4 py-3 border border-primary bg-primary/10 text-primary hover:bg-primary hover:text-black text-sm font-mono tracking-wider transition-all"
-                    >
-                      SIGN UP
-                    </Link>
-                  </div>
-                )}
-              </div>
             </div>
           </motion.div>
         )}

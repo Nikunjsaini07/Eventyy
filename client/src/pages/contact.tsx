@@ -63,8 +63,8 @@ export default function ContactPage() {
                     <div>
                       <h3 className="font-bold text-white uppercase tracking-wider text-sm mb-1">Email Us</h3>
                       <p className="text-text-muted font-mono text-xs mb-2">For general queries and support</p>
-                      <a href="mailto:support@eventyy.com" className="text-primary font-mono text-sm hover:underline">
-                        support@eventyy.com
+                      <a href="mailto:support@shobhit.edu" className="text-primary font-mono text-sm hover:underline">
+                        support@shobhit.edu
                       </a>
                     </div>
                   </div>

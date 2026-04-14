@@ -2,13 +2,11 @@ export type UserRole = "STUDENT" | "ADMIN";
 
 export type UniversityBadgeStatus = "NONE" | "PENDING" | "VERIFIED" | "REJECTED";
 
-export type EventType = "VISITING" | "PVP" | "RANKED";
 export type ParticipationType = "SOLO" | "TEAM";
 export type AudienceScope = "OPEN" | "UNIVERSITY_ONLY";
 export type EventStatus = "DRAFT" | "PUBLISHED" | "CANCELLED" | "COMPLETED";
-export type RegistrationStatus = "PENDING" | "CONFIRMED" | "CANCELLED" | "CHECKED_IN";
+export type RegistrationStatus = "PENDING" | "CONFIRMED" | "REJECTED" | "CANCELLED" | "CHECKED_IN";
 export type PaymentStatus = "NOT_REQUIRED" | "PENDING" | "PAID" | "FAILED" | "REFUNDED";
-export type MatchStatus = "DRAFT" | "SCHEDULED" | "COMPLETED";
 
 export interface User {
   id: string;
@@ -17,6 +15,8 @@ export interface User {
   fullName: string;
   role: UserRole;
   isActive: boolean;
+  isEmailVerified?: boolean;
+  emailVerifiedAt?: string;
   universityName?: string;
   universityEmail?: string;
   universityStudentId?: string;
@@ -27,6 +27,43 @@ export interface User {
   universityBadgeApprovedAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface EventGroupSummary {
+  id: string;
+  title: string;
+  slug: string;
+  subtitle?: string;
+  description?: string;
+  bannerImageUrl?: string;
+  venue?: string;
+  startsAt?: string;
+  endsAt?: string;
+  audienceScope: AudienceScope;
+  status: EventStatus;
+  metadata?: Record<string, unknown>;
+  events?: Event[];
+}
+
+export interface CoordinatorAssignmentSummary {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  isActive?: boolean;
+  event: {
+    id: string;
+    title: string;
+    slug: string;
+    bannerImageUrl?: string;
+    status?: EventStatus;
+    startsAt?: string;
+    endsAt?: string;
+    venue?: string;
+    group?: EventGroupSummary;
+    _count?: {
+      registrations: number;
+    };
+  };
 }
 
 export interface AuthUser {
@@ -40,86 +77,18 @@ export interface AuthUser {
   emailVerifiedAt?: string;
   universityBadgeStatus: UniversityBadgeStatus;
   isUniversityVerified: boolean;
-  coordinatorAssignments: CoordinatorAssignment[];
+  isCoordinator?: boolean;
+  hasActiveRegistration?: boolean;
+  activeRegistrationEventId?: string;
+  coordinatorAssignments?: CoordinatorAssignmentSummary[];
 }
 
-export interface CoordinatorAssignment {
+export interface TeamMember {
   id: string;
+  teamId: string;
   userId: string;
-  eventId: string;
-  assignedById: string;
-  permissions?: string[];
-  startsAt: string;
-  endsAt: string;
-  isActive: boolean;
-  event?: {
-    id: string;
-    title: string;
-    slug: string;
-    type?: EventType;
-    status?: EventStatus;
-    startsAt?: string;
-    endsAt?: string;
-    group?: {
-      id: string;
-      title: string;
-      slug: string;
-    };
-  };
-  assignedBy?: {
-    id: string;
-    fullName: string;
-    email: string;
-  };
-}
-
-export interface Event {
-  id: string;
-  groupId?: string;
-  title: string;
-  slug: string;
-  description?: string;
-  type: EventType;
-  participationType: ParticipationType;
-  audienceScope: AudienceScope;
-  status: EventStatus;
-  requiresPayment: boolean;
-  entryFee?: number;
-  venue?: string;
-  startsAt?: string;
-  endsAt?: string;
-  registrationOpensAt?: string;
-  registrationClosesAt?: string;
-  maxParticipants?: number;
-  teamSizeMin?: number;
-  teamSizeMax?: number;
-  roundsEnabled: boolean;
-  roundCount?: number;
-  winnerCount?: number;
-  metadata?: Record<string, unknown>;
-  createdById: string;
-  createdAt: string;
-  updatedAt: string;
-  createdBy?: { id: string; fullName: string };
-  group?: { id: string; title: string; slug: string; status?: EventStatus };
-  coordinatorAssignments?: CoordinatorAssignment[];
-  rounds?: EventRound[];
-  registrations?: EventRegistration[];
-}
-
-export interface EventRegistration {
-  id: string;
-  eventId: string;
-  userId?: string;
-  teamId?: string;
-  status: RegistrationStatus;
-  paymentStatus: PaymentStatus;
-  amountDue?: number;
-  checkedInAt?: string;
-  createdAt: string;
-  event?: Event;
-  user?: { id: string; fullName: string; email?: string; universityBadgeStatus?: UniversityBadgeStatus };
-  team?: Team;
+  role: "CAPTAIN" | "MEMBER";
+  user?: { id: string; fullName: string; email?: string };
 }
 
 export interface Team {
@@ -131,72 +100,72 @@ export interface Team {
   members?: TeamMember[];
 }
 
-export interface TeamMember {
+export interface Event {
   id: string;
-  teamId: string;
-  userId: string;
-  role: "CAPTAIN" | "MEMBER";
-  user?: { id: string; fullName: string; email?: string };
+  title: string;
+  slug: string;
+  description?: string;
+  bannerImageUrl?: string;
+  backgroundImageUrl?: string;
+  participationType: ParticipationType;
+  audienceScope: AudienceScope;
+  status: EventStatus;
+  requiresApproval?: boolean;
+  requiresPayment: boolean;
+  entryFee?: number;
+  venue?: string;
+  startsAt?: string;
+  endsAt?: string;
+  registrationOpensAt?: string;
+  registrationClosesAt?: string;
+  maxParticipants?: number;
+  teamSizeMin?: number;
+  teamSizeMax?: number;
+  metadata?: Record<string, unknown>;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+  group?: EventGroupSummary;
+  createdBy?: { id: string; fullName: string; email?: string };
+  registrations?: EventRegistration[];
+  myRegistration?: EventRegistration | null;
+  registrationCount?: number;
+  canManageRegistrations?: boolean;
+  coordinatorAssignments?: Array<{
+    id: string;
+    startsAt: string;
+    endsAt: string;
+    user: { id: string; fullName: string; email?: string; role?: UserRole };
+  }>;
+  _count?: {
+    registrations: number;
+  };
 }
 
-export interface EventRound {
+export interface EventRegistration {
   id: string;
   eventId: string;
-  roundNumber: number;
-  name: string;
-  isOptional: boolean;
-}
-
-export interface PvpMatch {
-  id: string;
-  eventId: string;
-  roundId?: string;
-  roundNumber: number;
-  slotLabel?: string;
-  participantARegistrationId?: string;
-  participantBRegistrationId?: string;
-  winnerRegistrationId?: string;
-  nextMatchId?: string;
-  nextMatchSlot?: number;
-  status: MatchStatus;
-  notes?: string;
-  scheduledAt?: string;
-  completedAt?: string;
-  participantA?: EventRegistration;
-  participantB?: EventRegistration;
-  winner?: EventRegistration;
-}
-
-export interface LeaderboardEntry {
-  id: string;
-  eventId: string;
-  registrationId: string;
-  score: number;
-  wins: number;
-  losses: number;
-  draws: number;
-  position?: number;
-  qualified: boolean;
-  notes?: string;
-  registration?: EventRegistration;
-}
-
-export interface EventResult {
-  id: string;
-  eventId: string;
-  registrationId: string;
-  rank: number;
-  title?: string;
-  isWinner: boolean;
-  createdAt?: string;
-  registration?: EventRegistration;
+  userId?: string;
+  teamId?: string;
+  status: RegistrationStatus;
+  paymentStatus: PaymentStatus;
+  amountDue?: number;
+  checkedInAt?: string;
+  reviewedAt?: string;
+  reviewNote?: string;
+  createdAt: string;
+  event?: Event;
+  user?: { id: string; fullName: string; email?: string; universityBadgeStatus?: UniversityBadgeStatus };
+  team?: Team;
+  reviewedBy?: { id: string; fullName: string; email?: string };
 }
 
 export interface ActivitySummary {
   totalRegistrations: number;
-  totalCoordinatorAssignments: number;
-  activeCoordinatorAssignments: number;
   pastEvents: number;
+  totalCreatedEvents?: number;
+  publishedCreatedEvents?: number;
+  activeCoordinatorAssignments?: number;
 }
 
 export interface RegistrationActivities {
@@ -206,9 +175,9 @@ export interface RegistrationActivities {
 }
 
 export interface CoordinatorActivities {
-  active: CoordinatorAssignment[];
-  upcoming: CoordinatorAssignment[];
-  past: CoordinatorAssignment[];
+  upcoming: CoordinatorAssignmentSummary[];
+  active: CoordinatorAssignmentSummary[];
+  past: CoordinatorAssignmentSummary[];
 }
 
 export interface BadgeHistoryEntry {
@@ -224,14 +193,28 @@ export interface BadgeHistoryEntry {
 }
 
 export interface UserProfile extends User {
-  isEmailVerified: boolean;
-  emailVerifiedAt?: string;
-  coordinatorAssignments: CoordinatorAssignment[];
   registrations: EventRegistration[];
+  createdEvents?: Event[];
   activitySummary?: ActivitySummary;
   activities?: {
     registrations: RegistrationActivities;
-    coordinatorAssignments: CoordinatorActivities;
+    createdEvents?: Event[];
+    coordinatorAssignments?: CoordinatorActivities;
     badgeHistory: BadgeHistoryEntry[];
   };
+}
+
+export interface SiteContent {
+  id: string;
+  collegeName: string;
+  campusName?: string;
+  festivalName: string;
+  tagline?: string;
+  heroTitle?: string;
+  heroSubtitle?: string;
+  heroImageUrl?: string;
+  aboutTitle?: string;
+  aboutDescription?: string;
+  contactEmail?: string;
+  contactPhone?: string;
 }

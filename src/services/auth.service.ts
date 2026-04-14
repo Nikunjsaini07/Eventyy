@@ -1,4 +1,4 @@
-import { OtpPurpose, OtpStatus, UniversityBadgeStatus, UserRole } from "@prisma/client";
+import { OtpPurpose, OtpStatus, RegistrationStatus, UniversityBadgeStatus, UserRole } from "@prisma/client";
 
 import { env, isProduction } from "../config/env";
 import { prisma } from "../config/prisma";
@@ -36,25 +36,62 @@ type ResetPasswordInput = {
 };
 
 const buildUserSnapshot = async (userId: string) => {
+  const now = new Date();
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: {
+    select: {
+      id: true,
+      email: true,
+      phone: true,
+      fullName: true,
+      role: true,
+      isEmailVerified: true,
+      emailVerifiedAt: true,
+      universityBadgeStatus: true,
       coordinatorAssignments: {
         where: {
-          isActive: true
+          isActive: true,
+          startsAt: {
+            lte: now
+          },
+          endsAt: {
+            gte: now
+          }
         },
-        include: {
+        select: {
+          id: true,
+          startsAt: true,
+          endsAt: true,
           event: {
             select: {
               id: true,
               title: true,
-              slug: true
+              slug: true,
+              group: {
+                select: {
+                  id: true,
+                  title: true,
+                  slug: true
+                }
+              }
             }
           }
+        }
+      },
+      registrations: {
+        where: {
+          status: {
+            notIn: [RegistrationStatus.CANCELLED, RegistrationStatus.REJECTED]
+          }
+        },
+        select: {
+          id: true,
+          eventId: true
         },
         orderBy: {
           createdAt: "desc"
-        }
+        },
+        take: 1
       }
     }
   });
@@ -63,15 +100,10 @@ const buildUserSnapshot = async (userId: string) => {
     throw new ApiError(404, "User not found");
   }
 
-  const now = new Date();
-  const activeCoordinatorAssignments = user.coordinatorAssignments.filter(
-    (assignment) => assignment.startsAt <= now && assignment.endsAt >= now
-  );
+  const effectiveRoles: string[] = [user.role];
 
-  const effectiveRoles = new Set<string>([user.role]);
-
-  if (activeCoordinatorAssignments.length > 0) {
-    effectiveRoles.add("COORDINATOR");
+  if (user.coordinatorAssignments.length > 0) {
+    effectiveRoles.push("COORDINATOR");
   }
 
   return {
@@ -80,12 +112,15 @@ const buildUserSnapshot = async (userId: string) => {
     phone: user.phone,
     fullName: user.fullName,
     role: user.role,
-    effectiveRoles: [...effectiveRoles],
+    effectiveRoles,
     isEmailVerified: user.isEmailVerified,
     emailVerifiedAt: user.emailVerifiedAt,
     universityBadgeStatus: user.universityBadgeStatus,
     isUniversityVerified: user.universityBadgeStatus === UniversityBadgeStatus.VERIFIED,
-    coordinatorAssignments: activeCoordinatorAssignments
+    coordinatorAssignments: user.coordinatorAssignments,
+    isCoordinator: user.coordinatorAssignments.length > 0,
+    hasActiveRegistration: user.registrations.length > 0,
+    activeRegistrationEventId: user.registrations[0]?.eventId
   };
 };
 

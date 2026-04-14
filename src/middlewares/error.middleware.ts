@@ -42,7 +42,7 @@ export const errorHandler = (
     ...(isProduction
       ? {}
       : {
-          error
+          error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error)
         })
   });
 };

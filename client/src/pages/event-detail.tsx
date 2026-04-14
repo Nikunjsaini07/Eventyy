@@ -1,36 +1,36 @@
-import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   CalendarDays,
-  MapPin,
-  Users,
-  Clock,
-  Trophy,
-  Swords,
-  Eye,
-  Crown,
-  UserPlus,
+  CreditCard,
   Loader2,
-  CheckCircle,
-  XCircle,
-  DollarSign,
+  Lock,
+  Mail,
+  MapPin,
+  Phone,
   Shield,
-  Terminal,
+  Trash2,
+  UserPlus,
+  Users,
+  XCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import api from "@/lib/api";
+import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
+
 import { useAuth } from "@/context/auth-context";
-import type { Event, EventRegistration } from "@/types";
-import { cn, formatDateTime } from "@/lib/utils";
+import api from "@/lib/api";
+import { cn, formatDate, formatDateTime } from "@/lib/utils";
+import type { Event, EventRegistration, SiteContent } from "@/types";
 
 export default function EventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
 
   const [event, setEvent] = useState<Event | null>(null);
+  const [siteContent, setSiteContent] = useState<SiteContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -38,53 +38,114 @@ export default function EventDetailPage() {
   const [memberIds, setMemberIds] = useState("");
 
   useEffect(() => {
-    if (!eventId) return;
-    api
-      .get(`/events/${eventId}`)
-      .then((res) => setEvent(res.data))
-      .catch(() => toast.error("Event not found"))
+    if (!eventId) {
+      return;
+    }
+
+    setLoading(true);
+
+    Promise.allSettled([api.get(`/events/${eventId}`), api.get("/site-content")])
+      .then(([eventResult, siteResult]) => {
+        if (eventResult.status === "fulfilled") {
+          setEvent(eventResult.value.data);
+        } else {
+          const message =
+            (eventResult.reason as { response?: { data?: { message?: string } } })?.response?.data
+              ?.message ?? "Event not found";
+          toast.error(message);
+          setEvent(null);
+        }
+
+        if (siteResult.status === "fulfilled") {
+          setSiteContent(siteResult.value.data);
+        } else {
+          setSiteContent(null);
+        }
+      })
       .finally(() => setLoading(false));
   }, [eventId]);
 
-  const myRegistration = event?.registrations?.find(
-    (r: EventRegistration) =>
-      r.userId === user?.id ||
-      r.team?.captainId === user?.id
+  const refreshEvent = async () => {
+    if (!eventId) {
+      return;
+    }
+
+    const response = await api.get(`/events/${eventId}`);
+    setEvent(response.data);
+  };
+
+  const myRegistration = event?.myRegistration ?? null;
+  const activeRegistrations = useMemo(
+    () => event?.registrations?.filter((entry) => entry.status !== "CANCELLED") ?? [],
+    [event?.registrations]
   );
 
+  const registrationLockedByAnotherEvent = Boolean(
+    user?.hasActiveRegistration && !myRegistration && user.activeRegistrationEventId !== event?.id
+  );
+  const registrationBlockedForAdmin = user?.role === "ADMIN";
+  const canAuthenticatedUserRegister =
+    Boolean(user) &&
+    !myRegistration &&
+    !registrationLockedByAnotherEvent &&
+    !registrationBlockedForAdmin &&
+    event?.status === "PUBLISHED";
+  const canRegister =
+    !myRegistration && !registrationLockedByAnotherEvent && !registrationBlockedForAdmin && event?.status === "PUBLISHED";
+
   const handleSoloRegister = async () => {
-    if (!user) { navigate("/login"); return; }
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
     setRegistering(true);
     try {
       await api.post(`/events/${eventId}/register`, {});
-      toast.success("Registration successful!");
-      const { data } = await api.get(`/events/${eventId}`);
-      setEvent(data);
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Registration failed";
-      toast.error(msg);
+      toast.success("Registration submitted successfully");
+      await Promise.all([refreshEvent(), refreshUser()]);
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Registration failed";
+      toast.error(message);
     } finally {
       setRegistering(false);
     }
   };
 
-  const handleTeamRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) { navigate("/login"); return; }
+  const handleTeamRegister = async (submissionEvent: React.FormEvent) => {
+    submissionEvent.preventDefault();
+
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
     setRegistering(true);
     try {
-      const ids = memberIds.split(",").map((id) => id.trim()).filter(Boolean);
-      const payload: Record<string, unknown> = { name: teamName };
-      if (ids.length > 0) {
-        payload.memberIds = ids;
+      const payload: { name: string; memberIds?: string[] } = {
+        name: teamName,
+      };
+      const parsedMemberIds = memberIds
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+      if (parsedMemberIds.length > 0) {
+        payload.memberIds = parsedMemberIds;
       }
+
       await api.post(`/events/${eventId}/register-team`, payload);
-      toast.success("Team registered successfully!");
-      const { data } = await api.get(`/events/${eventId}`);
-      setEvent(data);
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Registration failed";
-      toast.error(msg);
+      toast.success("Team registration submitted successfully");
+      setTeamName("");
+      setMemberIds("");
+      await Promise.all([refreshEvent(), refreshUser()]);
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Team registration failed";
+      toast.error(message);
     } finally {
       setRegistering(false);
     }
@@ -95,11 +156,12 @@ export default function EventDetailPage() {
     try {
       await api.delete(`/events/${eventId}/register`);
       toast.success("Registration cancelled");
-      const { data } = await api.get(`/events/${eventId}`);
-      setEvent(data);
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Cancellation failed";
-      toast.error(msg);
+      await Promise.all([refreshEvent(), refreshUser()]);
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Failed to cancel registration";
+      toast.error(message);
     } finally {
       setCancelling(false);
     }
@@ -107,350 +169,481 @@ export default function EventDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex min-h-screen items-center justify-center bg-[#020202]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#ff5665]" />
       </div>
     );
   }
 
   if (!event) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-text-muted">
-        <XCircle className="w-16 h-16 mb-4 opacity-30" />
-        <p className="text-lg font-mono uppercase tracking-widest">Event Not Found</p>
-        <Link to="/events" className="mt-4 text-primary text-sm font-mono hover:underline uppercase tracking-wider">
-          &lt;- Return to Database
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#020202] px-4 text-center text-white">
+        <XCircle className="h-12 w-12 text-white/40" />
+        <h1 className="mt-5 text-3xl font-black uppercase tracking-tight">Event not found</h1>
+        <p className="mt-3 max-w-md text-sm text-white/60">
+          This event may have been removed, kept in draft mode, or restricted to verified
+          university students.
+        </p>
+        <Link
+          to="/events"
+          className="mt-6 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-5 py-3 text-sm font-semibold uppercase tracking-[0.14em] text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to events
         </Link>
       </div>
     );
   }
 
-  const TypeIcon = { PVP: Swords, RANKED: Crown, VISITING: Eye }[event.type] || Eye;
-  const regCount = event.registrations?.filter((r) => r.status !== "CANCELLED").length ?? 0;
+  const posterImage = event.bannerImageUrl || event.backgroundImageUrl || event.group?.bannerImageUrl;
+  const infoPhone = siteContent?.contactPhone || "+91 97998 81036";
+  const infoEmail = siteContent?.contactEmail || "sangeetam@shobhituniversity.ac.in";
+  const infoAddress = `${siteContent?.collegeName || "Shobhit University"}${siteContent?.campusName ? `, ${siteContent.campusName}` : ""}, Adarsh Institutional Area, Babu Vijendra Marg, Gangoh, Saharanpur, Uttar Pradesh 247341`;
+  const descriptionBlocks = buildDescriptionBlocks(event.description);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero */}
-      <section className="relative py-20 border-b border-border overflow-hidden">
-        <div className="absolute inset-0 bg-grid opacity-30 pointer-events-none" />
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <Link
-            to="/events"
-            className="inline-flex items-center gap-2 text-text-muted hover:text-white font-mono text-xs uppercase tracking-widest mb-8 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            BACK TO DATABASE
-          </Link>
+    <div className="min-h-screen bg-[#020202] text-white">
+      <div className="absolute inset-x-0 top-0 h-[38rem] bg-[radial-gradient(circle_at_top_left,rgba(255,86,101,0.16),transparent_24%),linear-gradient(180deg,#0a0a0a_0%,#020202_85%)]" />
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="flex flex-wrap gap-2 mb-6">
-              <span className="px-3 py-1 text-xs font-bold font-mono tracking-widest border border-primary text-primary bg-primary/10 uppercase">
-                <TypeIcon className="w-3.5 h-3.5 inline mr-1.5" />
-                {event.type}
-              </span>
-              <span className="px-3 py-1 text-xs font-bold font-mono tracking-widest border border-border bg-surface text-text-muted uppercase">
-                {event.participationType === "TEAM" ? (
-                  <><Users className="w-3.5 h-3.5 inline mr-1.5" />Team Protocol</>
+      <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <Link
+          to="/events"
+          className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-white/60 transition-colors hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to events
+        </Link>
+
+        <div className="mt-8 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="overflow-hidden rounded-[2rem] border border-[#ff5665]/35 bg-black shadow-[0_24px_80px_rgba(255,86,101,0.12)]">
+            <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
+              <div className="bg-[#0b1131]">
+                {posterImage ? (
+                  <img src={posterImage} alt={event.title} className="h-full w-full object-cover" />
                 ) : (
-                  "Solo Protocol"
-                )}
-              </span>
-              {event.audienceScope === "UNIVERSITY_ONLY" && (
-                <span className="px-3 py-1 text-xs font-bold font-mono tracking-widest border border-warning/50 text-warning bg-warning/10 uppercase">
-                  🎓 UNI ONLY
-                </span>
-              )}
-            </div>
-
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter">
-              {event.title}
-            </h1>
-
-            {event.description && (
-              <p className="mt-6 text-text-muted leading-relaxed font-mono max-w-2xl text-sm">
-                {event.description}
-              </p>
-            )}
-
-            <div className="mt-8 pt-8 border-t border-border flex flex-wrap gap-6 text-xs text-text-muted font-mono tracking-widest uppercase">
-              {event.startsAt && (
-                <span className="flex items-center gap-2">
-                  <CalendarDays className="w-4 h-4 text-primary" />
-                  START: {formatDateTime(event.startsAt)}
-                </span>
-              )}
-              {event.endsAt && (
-                <span className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-border" />
-                  END: {formatDateTime(event.endsAt)}
-                </span>
-              )}
-              {event.venue && (
-                <span className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-primary" />
-                  LOC: {event.venue}
-                </span>
-              )}
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Content */}
-      <section className="py-12">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left: Details */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Event Info Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <InfoCard icon={Users} label="Confirmed" value={String(regCount)} color="text-primary" />
-                {event.maxParticipants && (
-                  <InfoCard icon={Users} label="Max Capacity" value={String(event.maxParticipants)} color="text-text" />
-                )}
-                {event.requiresPayment && event.entryFee && (
-                  <InfoCard icon={DollarSign} label="Access Fee" value={`₹${event.entryFee}`} color="text-warning" />
-                )}
-                {event.roundCount && (
-                  <InfoCard icon={Trophy} label="Stages" value={String(event.roundCount)} color="text-primary" />
-                )}
-                {event.winnerCount && (
-                  <InfoCard icon={Crown} label="Victors" value={String(event.winnerCount)} color="text-text" />
+                  <div className="flex min-h-[20rem] items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(255,86,101,0.14),transparent_22%),linear-gradient(135deg,#10183c,#0b0b0b_65%)] px-8 text-center">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#ff8994]">
+                        {event.group?.title || "Event poster"}
+                      </p>
+                      <h1 className="mt-5 text-4xl font-black uppercase tracking-tight text-white">
+                        {event.title}
+                      </h1>
+                    </div>
+                  </div>
                 )}
               </div>
 
-              {/* Team size */}
-              {event.participationType === "TEAM" && (
-                <div className="p-6 bg-surface border border-border">
-                  <h3 className="text-xs font-bold font-mono text-primary tracking-widest uppercase mb-2 flex items-center gap-2">
-                    <Terminal className="w-4 h-4" /> Team Parameter Requirements
-                  </h3>
-                  <p className="text-sm font-mono text-text-muted leading-relaxed">
-                    {event.teamSizeMin && event.teamSizeMax
-                      ? `Valid squad size: ${event.teamSizeMin} to ${event.teamSizeMax} units.`
-                      : event.teamSizeMax
-                      ? `Maximum squad capacity: ${event.teamSizeMax} units.`
-                      : "Unrestricted unit count."}
-                  </p>
-                </div>
-              )}
-
-              {/* Bracket & Leaderboard links */}
-              {event.type === "PVP" && (
-                <Link
-                  to={`/events/${event.id}/bracket`}
-                  className="flex items-center gap-4 p-5 bg-surface border border-border hover:border-primary transition-colors group"
-                >
-                  <Swords className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
-                  <span className="text-sm font-bold font-mono tracking-widest text-white uppercase group-hover:text-primary transition-colors">Access Bracket Stream -&gt;</span>
-                </Link>
-              )}
-              {event.type === "RANKED" && (
-                <Link
-                  to={`/leaderboard/${event.id}`}
-                  className="flex items-center gap-4 p-5 bg-surface border border-border hover:border-primary transition-colors group"
-                >
-                  <Trophy className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
-                  <span className="text-sm font-bold font-mono tracking-widest text-white uppercase group-hover:text-primary transition-colors">Access Global Leaderboard -&gt;</span>
-                </Link>
-              )}
-
-              {/* Registrations list */}
-              {event.registrations && event.registrations.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-black text-white font-mono tracking-widest uppercase mb-4 border-b border-border pb-2">
-                    Active Rosters ({regCount})
-                  </h3>
-                  <div className="space-y-3">
-                    {event.registrations
-                      .filter((r) => r.status !== "CANCELLED")
-                      .map((reg) => (
-                        <div
-                          key={reg.id}
-                          className="flex items-center justify-between py-3 px-4 bg-surface border border-border"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="w-8 h-8 bg-primary/10 border border-primary flex items-center justify-center text-xs font-bold text-primary font-mono uppercase">
-                              {reg.team
-                                ? reg.team.name?.[0]?.toUpperCase()
-                                : reg.user?.fullName?.[0]?.toUpperCase() ?? "?"}
-                            </div>
-                            <div>
-                              <span className="text-sm font-bold font-mono text-white uppercase tracking-wider block">
-                                {reg.team ? reg.team.name : reg.user?.fullName}
-                              </span>
-                              {reg.team && (
-                                <p className="text-[10px] uppercase font-mono text-text-muted mt-0.5">
-                                  {reg.team.members?.length ?? 0} UNITS
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <span
-                            className={cn(
-                              "text-[10px] font-bold px-2 py-1 uppercase tracking-widest font-mono border",
-                              reg.status === "CONFIRMED"
-                                ? "bg-success/10 text-success border-success/30"
-                                : reg.status === "PENDING"
-                                ? "bg-warning/10 text-warning border-warning/30"
-                                : "bg-text-muted/10 text-text-muted border-text-muted/30"
-                            )}
-                          >
-                            {reg.status}
-                          </span>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Coordinators */}
-              {event.coordinatorAssignments && event.coordinatorAssignments.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-black text-white font-mono tracking-widest uppercase mb-3 text-text-muted">Command Structure</h3>
-                  <div className="flex flex-wrap gap-3">
-                    {event.coordinatorAssignments.map((ca) => (
-                      <div
-                        key={ca.id}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border text-xs font-mono tracking-widest uppercase"
-                      >
-                        <Shield className="w-3.5 h-3.5 text-primary" />
-                        <span className="text-text">
-                          {(ca as unknown as { user?: { fullName: string } }).user?.fullName ?? "Admin"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Right: Registration */}
-            <div>
-              <div className="sticky top-24 bg-surface border border-primary/50 p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-8 h-8 bg-primary/10" />
-                <h3 className="text-lg font-black text-white tracking-widest uppercase mb-6 font-mono border-b border-border pb-4">
-                  Registration Node
-                </h3>
-
-                {myRegistration ? (
-                  <div className="space-y-6">
-                    <div className="flex flex-col gap-3 p-5 bg-primary/5 border border-primary">
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
-                        <p className="text-xs font-black font-mono tracking-widest text-primary uppercase">Identity Confirmed</p>
-                      </div>
-                      <p className="text-[10px] text-text-muted font-mono tracking-widest uppercase pl-8">
-                        STATUS: {myRegistration.status}
-                      </p>
-                    </div>
-                    {myRegistration.status !== "CANCELLED" && (
-                      <button
-                        onClick={handleCancel}
-                        disabled={cancelling}
-                        className="w-full flex items-center justify-center gap-2 py-3 border border-danger/50 text-danger text-xs font-bold font-mono uppercase tracking-widest hover:bg-danger/10 transition-colors disabled:opacity-50"
-                      >
-                        {cancelling ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <>
-                            <XCircle className="w-4 h-4" />
-                            ABORT REGISTRATION
-                          </>
-                        )}
-                      </button>
-                    )}
-                  </div>
-                ) : event.status === "PUBLISHED" ? (
-                  event.participationType === "SOLO" ? (
-                    <button
-                      onClick={handleSoloRegister}
-                      disabled={registering}
-                      className="w-full flex items-center justify-center gap-2 py-4 bg-primary text-black font-bold font-mono text-sm tracking-widest uppercase transition-colors hover:bg-primary-light disabled:opacity-50"
-                    >
-                      {registering ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <>
-                          <UserPlus className="w-5 h-5" />
-                          INITIALIZE SOLO
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <form onSubmit={handleTeamRegister} className="space-y-5">
-                      <div>
-                        <label className="block text-[10px] font-bold text-primary font-mono tracking-widest uppercase mb-1.5">
-                          Squad Designation
-                        </label>
-                        <input
-                          type="text"
-                          value={teamName}
-                          onChange={(e) => setTeamName(e.target.value)}
-                          required
-                          placeholder="ENTER TEAM NAME..."
-                          className="w-full px-4 py-3 bg-background border border-border text-text text-sm font-mono placeholder:text-text-dim focus:outline-none focus:border-primary transition-colors uppercase"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-primary font-mono tracking-widest uppercase mb-1.5">
-                          External Units (CSV)
-                        </label>
-                        <input
-                          type="text"
-                          value={memberIds}
-                          onChange={(e) => setMemberIds(e.target.value)}
-                          placeholder="ID1, ID2, ID3"
-                          className="w-full px-4 py-3 bg-background border border-border text-text text-sm font-mono placeholder:text-text-dim focus:outline-none focus:border-primary transition-colors uppercase"
-                        />
-                        <p className="text-[10px] text-text-dim mt-2 font-mono uppercase">
-                          Leave empty to deploy without external units
-                        </p>
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={registering || !teamName}
-                        className="w-full flex items-center justify-center gap-2 py-4 bg-primary text-black font-bold font-mono text-sm tracking-widest uppercase transition-colors hover:bg-primary-light disabled:opacity-50"
-                      >
-                        {registering ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <>
-                            <Users className="w-5 h-5" />
-                            DEPLOY SQUAD
-                          </>
-                        )}
-                      </button>
-                    </form>
-                  )
-                ) : (
-                  <div className="p-4 bg-surface border border-border border-dashed text-center">
-                    <p className="text-[10px] font-mono tracking-widest uppercase text-text-muted">
-                      Registration pathway offline.
-                    </p>
-                  </div>
-                )}
-
-                {/* Registration window */}
-                {(event.registrationOpensAt || event.registrationClosesAt) && (
-                  <div className="mt-6 pt-4 border-t border-border space-y-2 text-[10px] text-text-muted font-mono tracking-widest uppercase">
-                    {event.registrationOpensAt && (
-                      <p>R-OPEN: {formatDateTime(event.registrationOpensAt)}</p>
-                    )}
-                    {event.registrationClosesAt && (
-                      <p>R-CLOSE: {formatDateTime(event.registrationClosesAt)}</p>
-                    )}
-                  </div>
-                )}
+              <div className="space-y-5 border-t border-white/8 bg-[#060606] p-6 lg:border-l lg:border-t-0">
+                <ContactCard title="Let's Join With Us" phone={infoPhone} email={infoEmail} address={infoAddress} />
+                <RegistrationCard
+                  event={event}
+                  myRegistration={myRegistration}
+                  registering={registering}
+                  cancelling={cancelling}
+                  canRegister={canRegister}
+                  canAuthenticatedUserRegister={canAuthenticatedUserRegister}
+                  registrationLockedByAnotherEvent={registrationLockedByAnotherEvent}
+                  registrationBlockedForAdmin={Boolean(registrationBlockedForAdmin)}
+                  teamName={teamName}
+                  memberIds={memberIds}
+                  setTeamName={setTeamName}
+                  setMemberIds={setMemberIds}
+                  onSoloRegister={handleSoloRegister}
+                  onTeamRegister={handleTeamRegister}
+                  onCancel={handleCancel}
+                  onLogin={() => navigate("/login")}
+                  isLoggedIn={Boolean(user)}
+                />
               </div>
             </div>
           </div>
+
+          <div className="space-y-5 lg:pt-3">
+            <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6">
+              <div className="flex flex-wrap gap-2">
+                <Badge>{event.participationType}</Badge>
+                <Badge tone={event.requiresPayment ? "warning" : "success"}>
+                  {event.requiresPayment ? "Paid" : "Free"}
+                </Badge>
+                <Badge tone={event.audienceScope === "UNIVERSITY_ONLY" ? "accent" : "default"}>
+                  {event.audienceScope === "UNIVERSITY_ONLY" ? "University only" : "Open"}
+                </Badge>
+                {event.requiresApproval && <Badge tone="accent">Approval required</Badge>}
+              </div>
+
+              <h1 className="mt-6 text-4xl font-black uppercase tracking-tight text-white">
+                {event.title}
+              </h1>
+              <p className="mt-3 text-sm uppercase tracking-[0.18em] text-[#ff8994]">
+                {event.group?.title || "Featured event"}
+              </p>
+
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                <InfoCard
+                  icon={CreditCard}
+                  label="Registration fees"
+                  value={event.requiresPayment && event.entryFee ? `Rs. ${event.entryFee}` : "Free"}
+                />
+                <InfoCard
+                  icon={CalendarDays}
+                  label="Registration deadline"
+                  value={event.registrationClosesAt ? formatDate(event.registrationClosesAt) : "To be announced"}
+                />
+                <InfoCard
+                  icon={CalendarDays}
+                  label="Event schedule"
+                  value={event.startsAt ? formatDateTime(event.startsAt) : "Coming soon"}
+                />
+                <InfoCard
+                  icon={MapPin}
+                  label="Venue"
+                  value={event.venue || event.group?.venue || "Venue to be announced"}
+                />
+              </div>
+            </div>
+
+            {event.audienceScope === "UNIVERSITY_ONLY" && (
+              <div className="rounded-[2rem] border border-sky-500/25 bg-sky-500/10 p-6 text-sky-100">
+                <div className="flex items-start gap-3">
+                  <Shield className="mt-0.5 h-5 w-5 text-sky-300" />
+                  <div>
+                    <h2 className="text-lg font-bold uppercase tracking-[0.08em]">
+                      Verified university badge required
+                    </h2>
+                    <p className="mt-2 text-sm leading-7 text-sky-100/80">
+                      Only verified university students can view and register for this event.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </section>
+
+        <div className="mt-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-[2rem] border border-[#ff5665]/30 bg-black p-6 sm:p-8">
+            <p className="text-lg font-black uppercase tracking-tight text-white sm:text-2xl">
+              Registration Fees:-{" "}
+              <span className="text-[#ff5665]">
+                {event.requiresPayment && event.entryFee ? `Rs. ${event.entryFee}` : "Free"}
+              </span>
+            </p>
+
+            <div className="mt-8 flex items-center gap-4">
+              <h2 className="text-3xl font-black tracking-tight text-[#ff5665] sm:text-5xl">
+                Rules and Regulation
+              </h2>
+              <div className="h-px flex-1 bg-[#ff5665]/50" />
+            </div>
+
+            <div className="mt-8 space-y-8">
+              <MarkdownSection
+                title="About this event"
+                content={event.description}
+                emptyText="The admin has not added detailed rules for this event yet."
+              />
+
+              <DescriptionSection
+                title="Registration details"
+                items={[
+                  `Group: ${event.group?.title || "General events"}`,
+                  `Participation: ${event.participationType === "TEAM" ? "Team registration" : "Solo registration"}`,
+                  `Approval flow: ${event.requiresApproval ? "Coordinator or admin approval is required" : "Direct confirmation"}`,
+                  event.registrationOpensAt
+                    ? `Registration opens: ${formatDateTime(event.registrationOpensAt)}`
+                    : "Registration opens immediately",
+                  event.registrationClosesAt
+                    ? `Registration closes: ${formatDateTime(event.registrationClosesAt)}`
+                    : "Registration close time has not been announced",
+                ]}
+              />
+
+              {event.participationType === "TEAM" && (
+                <DescriptionSection
+                  title="Team requirements"
+                  items={[
+                    event.teamSizeMin && event.teamSizeMax
+                      ? `Teams must include between ${event.teamSizeMin} and ${event.teamSizeMax} students.`
+                      : event.teamSizeMax
+                        ? `Teams can include up to ${event.teamSizeMax} students.`
+                        : "The admin has not set a maximum team size yet.",
+                    "Each student can stay in only one active event registration at a time.",
+                  ]}
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-5">
+            <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6">
+              <h2 className="text-xl font-black uppercase tracking-tight text-white">
+                Quick facts
+              </h2>
+              <div className="mt-5 space-y-3">
+                <FactRow label="Status" value={event.status} />
+                <FactRow
+                  label="Audience"
+                  value={event.audienceScope === "UNIVERSITY_ONLY" ? "University only" : "Open"}
+                />
+                <FactRow label="Registrations" value={String(event.registrationCount ?? 0)} />
+                <FactRow
+                  label="Coordinator approval"
+                  value={event.requiresApproval ? "Required" : "Not required"}
+                />
+              </div>
+            </div>
+
+            {event.canManageRegistrations && (
+              <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 print:hidden">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-black uppercase tracking-tight text-white">
+                    Participating students
+                  </h2>
+                  <button
+                    onClick={() => window.print()}
+                    className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/20"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Print List
+                  </button>
+                </div>
+                {activeRegistrations.length === 0 ? (
+                  <p className="mt-4 text-sm text-white/60">No registrations have been submitted yet.</p>
+                ) : (
+                  <div className="mt-5 space-y-3">
+                    {activeRegistrations.map((registration) => (
+                      <ParticipantCard key={registration.id} registration={registration} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {event.canManageRegistrations && (
+        <div className="hidden print:block fixed inset-0 z-[9999] bg-white p-8 text-black">
+          <h1 className="text-2xl font-bold uppercase">{event.title} - Participant List</h1>
+          <p className="mt-2 text-sm text-gray-500">Generated on {new Date().toLocaleDateString()}</p>
+          <table className="mt-6 w-full border-collapse border border-gray-300 text-left text-sm">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-gray-300 px-4 py-2">Name / Team Name</th>
+                <th className="border border-gray-300 px-4 py-2">Details</th>
+                <th className="border border-gray-300 px-4 py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeRegistrations.map((reg) => (
+                <tr key={reg.id}>
+                  <td className="border border-gray-300 px-4 py-2 font-medium">
+                    {reg.team ? reg.team.name : (reg.user?.fullName || "Student")}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2">
+                    {reg.team
+                      ? `${reg.team.members?.length ?? 0} team members`
+                      : (reg.user?.email || "N/A")}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 uppercase">
+                    {reg.status}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RegistrationCard({
+  event,
+  myRegistration,
+  registering,
+  cancelling,
+  canRegister,
+  canAuthenticatedUserRegister,
+  registrationLockedByAnotherEvent,
+  registrationBlockedForAdmin,
+  teamName,
+  memberIds,
+  setTeamName,
+  setMemberIds,
+  onSoloRegister,
+  onTeamRegister,
+  onCancel,
+  onLogin,
+  isLoggedIn,
+}: {
+  event: Event;
+  myRegistration: EventRegistration | null;
+  registering: boolean;
+  cancelling: boolean;
+  canRegister: boolean;
+  canAuthenticatedUserRegister: boolean;
+  registrationLockedByAnotherEvent: boolean;
+  registrationBlockedForAdmin: boolean;
+  teamName: string;
+  memberIds: string;
+  setTeamName: (value: string) => void;
+  setMemberIds: (value: string) => void;
+  onSoloRegister: () => Promise<void>;
+  onTeamRegister: (event: React.FormEvent) => Promise<void>;
+  onCancel: () => Promise<void>;
+  onLogin: () => void;
+  isLoggedIn: boolean;
+}) {
+  return (
+    <>
+      <div className="rounded-[2rem] border border-[#ff5665]/35 bg-black p-6">
+        <button
+          onClick={() => {
+            if (!isLoggedIn) {
+              onLogin();
+              return;
+            }
+
+            if (event.participationType === "SOLO" && canRegister) {
+              void onSoloRegister();
+            }
+          }}
+          disabled={event.participationType !== "SOLO" || (isLoggedIn && !canAuthenticatedUserRegister) || registering}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-none bg-[#ff5665] px-5 py-4 text-lg font-black uppercase tracking-[0.08em] text-white transition-colors disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/45"
+        >
+          {registering && event.participationType === "SOLO" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Lock className="h-4 w-4" />
+          )}
+          {myRegistration
+            ? "Already registered"
+            : !isLoggedIn
+              ? "Login to register"
+              : event.participationType === "TEAM"
+                ? "Team registration below"
+                : "Register now"}
+        </button>
+
+        {myRegistration ? (
+          <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-100">
+            <p className="font-semibold uppercase tracking-[0.08em]">You are already registered</p>
+            <p className="mt-2 text-sm">Current status: {myRegistration.status}</p>
+            <button
+              onClick={() => void onCancel()}
+              disabled={cancelling}
+              className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.08em] text-rose-200 disabled:opacity-60"
+            >
+              {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              Cancel registration
+            </button>
+          </div>
+        ) : registrationBlockedForAdmin ? (
+          <Notice tone="warning">
+            Admin accounts cannot register as participating students.
+          </Notice>
+        ) : !isLoggedIn ? (
+          <Notice tone="default">Login first to submit your registration.</Notice>
+        ) : registrationLockedByAnotherEvent ? (
+          <Notice tone="warning">
+            You already have an active registration in another event. Cancel that registration
+            before joining a new one.
+          </Notice>
+        ) : event.status !== "PUBLISHED" ? (
+          <Notice tone="default">Registration is unavailable because this event is not published.</Notice>
+        ) : !canRegister && isLoggedIn ? (
+          <Notice tone="default">Registration is currently unavailable for this event.</Notice>
+        ) : null}
+      </div>
+
+      {event.participationType === "TEAM" && !myRegistration && (
+        <form onSubmit={(submissionEvent) => void onTeamRegister(submissionEvent)} className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6">
+          <h2 className="text-lg font-black uppercase tracking-[0.08em] text-white">Team registration</h2>
+          <p className="mt-2 text-sm leading-6 text-white/60">
+            Create one team and add optional teammate user IDs separated by commas.
+          </p>
+
+          <div className="mt-5 space-y-4">
+            <label className="block space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
+                Team name
+              </span>
+              <input
+                value={teamName}
+                onChange={(inputEvent) => setTeamName(inputEvent.target.value)}
+                required
+                disabled={!canAuthenticatedUserRegister || registering}
+                className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-[#ff5665] disabled:opacity-50"
+                placeholder="Enter your team name"
+              />
+            </label>
+
+            <label className="block space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
+                Teammate user IDs
+              </span>
+              <input
+                value={memberIds}
+                onChange={(inputEvent) => setMemberIds(inputEvent.target.value)}
+                disabled={!canAuthenticatedUserRegister || registering}
+                className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-[#ff5665] disabled:opacity-50"
+                placeholder="Optional: user-id-1, user-id-2"
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={!canAuthenticatedUserRegister || registering || teamName.trim().length < 2}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-none bg-[#ff5665] px-5 py-4 text-lg font-black uppercase tracking-[0.08em] text-white transition-colors disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/45"
+            >
+              {registering ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
+              Register team
+            </button>
+          </div>
+        </form>
+      )}
+    </>
+  );
+}
+
+function ContactCard({
+  title,
+  phone,
+  email,
+  address,
+}: {
+  title: string;
+  phone: string;
+  email: string;
+  address: string;
+}) {
+  return (
+    <div className="rounded-[2rem] border border-[#ff5665]/35 bg-black p-6">
+      <h2 className="text-3xl font-black uppercase tracking-tight text-white">{title}</h2>
+      <div className="mt-6 space-y-4 text-sm text-white/85">
+        <ContactRow icon={Phone} value={phone} />
+        <ContactRow icon={Mail} value={email} />
+        <ContactRow icon={MapPin} value={address} />
+      </div>
+    </div>
+  );
+}
+
+function ContactRow({
+  icon: Icon,
+  value,
+}: {
+  icon: typeof Phone;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <Icon className="mt-0.5 h-4 w-4 text-[#ff5665]" />
+      <p className="leading-6">{value}</p>
     </div>
   );
 }
@@ -459,18 +652,164 @@ function InfoCard({
   icon: Icon,
   label,
   value,
-  color,
 }: {
-  icon: typeof Users;
+  icon: typeof CalendarDays;
   label: string;
   value: string;
-  color: string;
 }) {
   return (
-    <div className="p-5 bg-surface border border-border text-center overflow-hidden relative">
-      <Icon className={cn("w-6 h-6 mx-auto mb-3", color, "opacity-70")} />
-      <div className="text-2xl font-black text-white font-mono tracking-tighter mb-1">{value}</div>
-      <div className="text-[10px] font-bold text-text-muted font-mono tracking-widest uppercase">{label}</div>
+    <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-4">
+      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#ff5665]/10 text-[#ff8994]">
+        <Icon className="h-4 w-4" />
+      </div>
+      <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
+        {label}
+      </p>
+      <p className="mt-2 text-sm font-semibold text-white">{value}</p>
     </div>
   );
+}
+
+function DescriptionSection({
+  title,
+  items,
+  emptyText,
+}: {
+  title: string;
+  items: string[];
+  emptyText?: string;
+}) {
+  return (
+    <section>
+      <h3 className="text-2xl font-black tracking-tight text-white">{title}</h3>
+      {items.length === 0 ? (
+        <p className="mt-4 text-sm leading-7 text-white/60">
+          {emptyText || "No details available yet."}
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-3 text-base leading-8 text-white/85">
+          {items.map((item) => (
+            <li key={item} className="flex gap-3">
+              <span className="pt-2 text-[#ff5665]">•</span>
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function MarkdownSection({
+  title,
+  content,
+  emptyText,
+}: {
+  title: string;
+  content?: string;
+  emptyText?: string;
+}) {
+  return (
+    <section>
+      <h3 className="text-2xl font-black tracking-tight text-white">{title}</h3>
+      {!content || content.trim().length === 0 ? (
+        <p className="mt-4 text-sm leading-7 text-white/60">
+          {emptyText || "No details available yet."}
+        </p>
+      ) : (
+        <div className="mt-4 prose prose-invert prose-p:leading-8 prose-p:text-white/85 prose-headings:text-white prose-a:text-[#ff5665] prose-li:text-white/85 max-w-none">
+          <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{content}</ReactMarkdown>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ParticipantCard({ registration }: { registration: EventRegistration }) {
+  return (
+    <div className="rounded-[1.6rem] border border-white/10 bg-black/45 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-white">
+            {registration.team ? registration.team.name : registration.user?.fullName || "Student"}
+          </p>
+          <p className="mt-1 text-xs text-white/50">
+            {registration.team
+              ? `${registration.team.members?.length ?? 0} team members`
+              : registration.user?.email || "Student participant"}
+          </p>
+        </div>
+        <span
+          className={cn(
+            "rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]",
+            registration.status === "CONFIRMED"
+              ? "bg-emerald-500/10 text-emerald-300"
+              : registration.status === "REJECTED"
+                ? "bg-rose-500/10 text-rose-300"
+                : "bg-amber-500/10 text-amber-300"
+          )}
+        >
+          {registration.status}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function FactRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/35 px-4 py-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">{label}</p>
+      <p className="text-sm font-semibold text-white">{value}</p>
+    </div>
+  );
+}
+
+function Notice({
+  children,
+  tone,
+}: {
+  children: string;
+  tone: "default" | "warning";
+}) {
+  const toneClass =
+    tone === "warning"
+      ? "border-amber-500/25 bg-amber-500/10 text-amber-100"
+      : "border-white/10 bg-white/[0.04] text-white/70";
+
+  return <div className={cn("mt-4 rounded-2xl border p-4 text-sm leading-6", toneClass)}>{children}</div>;
+}
+
+function Badge({
+  children,
+  tone = "default",
+}: {
+  children: string;
+  tone?: "default" | "success" | "warning" | "accent";
+}) {
+  const toneClass =
+    tone === "success"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+      : tone === "warning"
+        ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+        : tone === "accent"
+          ? "border-sky-500/30 bg-sky-500/10 text-sky-300"
+          : "border-white/10 bg-white/[0.04] text-white/65";
+
+  return (
+    <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]", toneClass)}>
+      {children}
+    </span>
+  );
+}
+
+function buildDescriptionBlocks(description?: string) {
+  if (!description) {
+    return [];
+  }
+
+  return description
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 }

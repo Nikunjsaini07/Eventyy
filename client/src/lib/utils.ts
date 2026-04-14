@@ -35,19 +35,6 @@ export function timeAgo(date: string | Date) {
   return formatDate(date);
 }
 
-export function getEventTypeColor(type: string) {
-  switch (type) {
-    case "PVP":
-      return "from-red-500/20 to-orange-500/20 text-orange-400 border-orange-500/30";
-    case "RANKED":
-      return "from-purple-500/20 to-blue-500/20 text-purple-400 border-purple-500/30";
-    case "VISITING":
-      return "from-green-500/20 to-emerald-500/20 text-emerald-400 border-emerald-500/30";
-    default:
-      return "from-gray-500/20 to-gray-400/20 text-gray-400 border-gray-500/30";
-  }
-}
-
 export function getStatusColor(status: string) {
   switch (status) {
     case "PUBLISHED":

@@ -1,195 +1,152 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import {
-  Activity,
-  CalendarDays,
-  Shield,
-  Loader2,
-  LayoutDashboard,
-} from "lucide-react";
+import { CalendarDays, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
-import api from "@/lib/api";
+
 import { useAuth } from "@/context/auth-context";
-import type { UserProfile } from "@/types";
-import { cn, formatDate } from "@/lib/utils";
+import api from "@/lib/api";
+import { cn, formatDate, formatDateTime } from "@/lib/utils";
+import type { EventRegistration, UserProfile } from "@/types";
 
 export default function MyEventsPage() {
-  const { user: authUser } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authUser) {
+    if (!user) {
       navigate("/login");
       return;
     }
+
     api
       .get("/profile/me")
-      .then((res) => setProfile(res.data))
-      .catch(() => toast.error("Failed to load events"))
+      .then((response) => setProfile(response.data))
+      .catch(() => toast.error("Failed to load your event activity"))
       .finally(() => setLoading(false));
-  }, [authUser, navigate]);
+  }, [navigate, user]);
+
+  const activities = useMemo(
+    () =>
+      profile?.activities?.registrations ?? {
+        upcoming: [],
+        ongoingOrRecent: profile?.registrations ?? [],
+        past: [],
+      },
+    [profile]
+  );
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (!profile) return null;
 
-  const assignments = profile.coordinatorAssignments || [];
-  const registrations = profile.registrations || [];
-
   return (
-    <div className="min-h-screen bg-background">
-      <section className="py-16 border-b border-border relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid opacity-30 pointer-events-none" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/30 text-primary font-mono text-xs uppercase tracking-widest mb-4">
-              <Activity className="w-3 h-3" /> Event Hub
-            </div>
-            <h1 className="text-4xl font-black text-white tracking-tighter uppercase">
-              My <span className="text-primary">Events</span>
-            </h1>
-            <p className="text-text-muted mt-2 font-mono text-sm max-w-xl">
-              Track your event registrations and manage events you are coordinating.
-            </p>
-          </motion.div>
+    <div className="min-h-screen bg-background text-text">
+      <section className="border-b border-border bg-surface/70">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
+          <p className="text-xs font-mono uppercase tracking-[0.22em] text-primary">My events</p>
+          <h1 className="mt-3 text-5xl font-black tracking-tight text-text">Your registrations in one place</h1>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-text-muted">
+            Track upcoming registrations, recent participation, and older event history in one simple view.
+          </p>
         </div>
       </section>
 
       <section className="py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-          {/* Coordinator Assignments */}
-          {assignments.length > 0 && (
-            <div>
-              <h2 className="text-lg font-black text-white font-mono tracking-widest uppercase mb-6 flex items-center gap-2">
-                <Shield className="w-5 h-5 text-primary" />
-                Coordinating Events
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {assignments.map((ca, i) => (
-                  <motion.div
-                    key={ca.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                  >
-                    <Link
-                      to={`/coordinator/${ca.eventId}`}
-                      className="block bg-surface border border-border hover:border-primary transition-colors p-6 group"
-                    >
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-12 h-12 bg-primary/10 border border-primary/30 flex items-center justify-center">
-                          <LayoutDashboard className="w-6 h-6 text-primary" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-white uppercase tracking-wider text-sm group-hover:text-primary transition-colors">
-                            {(ca.event as { title: string })?.title ?? "Event"}
-                          </h3>
-                          <p className="text-[10px] font-mono text-text-dim tracking-widest uppercase">
-                            {formatDate(ca.startsAt)} — {formatDate(ca.endsAt)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span
-                          className={cn(
-                            "px-2 py-0.5 text-[10px] font-bold font-mono tracking-widest uppercase border",
-                            ca.isActive
-                              ? "border-success/50 text-success bg-success/10"
-                              : "border-border text-text-dim bg-background"
-                          )}
-                        >
-                          {ca.isActive ? "ACTIVE" : "ENDED"}
-                        </span>
-                        <span className="text-[10px] font-bold font-mono text-primary tracking-widest uppercase group-hover:underline">
-                          Manage -&gt;
-                        </span>
-                      </div>
-                    </Link>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* User Registrations */}
-          <div>
-            <h2 className="text-lg font-black text-white font-mono tracking-widest uppercase mb-6 flex items-center gap-2">
-              <CalendarDays className="w-5 h-5 text-primary" />
-              My Participations
-            </h2>
-            {registrations.length === 0 ? (
-              <div className="text-center py-20 border border-dashed border-border bg-surface">
-                <CalendarDays className="w-12 h-12 mx-auto mb-4 text-border" />
-                <p className="text-sm font-mono text-text-muted uppercase tracking-widest">
-                  Not registered for any events yet.
-                </p>
-                <Link
-                  to="/events"
-                  className="inline-block mt-4 text-xs font-bold font-mono text-primary tracking-widest uppercase hover:underline"
-                >
-                  Browse Events -&gt;
-                </Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {registrations.map((reg, i) => (
-                  <motion.div
-                    key={reg.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                  >
-                    <Link
-                      to={`/events/${reg.eventId}`}
-                      className="block bg-surface border border-border hover:border-primary transition-colors p-6 group"
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bold text-white uppercase tracking-wider text-sm group-hover:text-primary transition-colors">
-                          {(reg.event as { title: string })?.title ?? "Event"}
-                        </h3>
-                      </div>
-                      <p className="text-[10px] font-mono text-text-dim tracking-widest uppercase mb-4">
-                        Registered {formatDate(reg.createdAt)}
-                      </p>
-                      <div className="flex items-center justify-between mt-auto">
-                        <span
-                          className={cn(
-                            "px-2 py-0.5 text-[10px] font-bold font-mono tracking-widest uppercase border",
-                            reg.status === "CONFIRMED"
-                              ? "border-success/50 text-success bg-success/10"
-                              : reg.status === "PENDING"
-                              ? "border-warning/50 text-warning bg-warning/10"
-                              : reg.status === "CANCELLED"
-                              ? "border-danger/50 text-danger bg-danger/10"
-                              : "border-secondary/50 text-secondary bg-secondary/10"
-                          )}
-                        >
-                          {reg.status}
-                        </span>
-                        <span className="text-[10px] font-bold font-mono text-primary tracking-widest uppercase group-hover:underline">
-                          View details -&gt;
-                        </span>
-                      </div>
-                    </Link>
-                  </motion.div>
-                ))}
-              </div>
-            )}
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-6 lg:grid-cols-3">
+            <ActivityColumn title="Upcoming" emptyText="No upcoming registrations" items={activities.upcoming} />
+            <ActivityColumn
+              title="Ongoing / Recent"
+              emptyText="No active registrations right now"
+              items={activities.ongoingOrRecent}
+            />
+            <ActivityColumn title="Past" emptyText="No past events yet" items={activities.past} />
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function ActivityColumn({
+  title,
+  emptyText,
+  items,
+}: {
+  title: string;
+  emptyText: string;
+  items: EventRegistration[];
+}) {
+  return (
+    <div className="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <CalendarDays className="h-4 w-4" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-text">{title}</h2>
+          <p className="text-xs uppercase tracking-[0.18em] text-text-dim">{items.length} items</p>
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="mt-6 text-sm text-text-muted">{emptyText}</p>
+      ) : (
+        <div className="mt-6 space-y-3">
+          {items.map((registration) => (
+            <Link
+              key={registration.id}
+              to={`/events/${registration.eventId}`}
+              className="block rounded-2xl border border-border bg-background p-4 transition-colors hover:border-primary/40"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="text-base font-semibold text-text">
+                    {registration.event?.title ?? "Event"}
+                  </h3>
+                  <p className="mt-1 text-xs text-text-muted">
+                    {registration.event?.startsAt
+                      ? formatDateTime(registration.event.startsAt)
+                      : "Date to be announced"}
+                  </p>
+                  <p className="mt-1 text-xs text-text-muted">
+                    Registered on {formatDate(registration.createdAt)}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <span
+                    className={cn(
+                      "rounded-full px-3 py-1 text-[11px] font-medium",
+                      registration.status === "CONFIRMED"
+                        ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+                        : registration.status === "PENDING"
+                          ? "bg-amber-500/10 text-amber-300 border border-amber-500/30"
+                          : registration.status === "CANCELLED"
+                            ? "bg-rose-500/10 text-rose-300 border border-rose-500/30"
+                            : "bg-white/5 text-white/60 border border-white/10"
+                    )}
+                  >
+                    {registration.status}
+                  </span>
+                  {registration.team && (
+                    <span className="rounded-full border border-border bg-surface px-3 py-1 text-[11px] font-medium text-text-muted">
+                      {registration.team.name}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

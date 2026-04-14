@@ -1,0 +1,7 @@
+{
+  "message": "Internal server error",
+  "error": {
+    "message": "Cannot set property query of #<IncomingMessage> which has only a getter",
+    "stack": "TypeError: Cannot set property query of #<IncomingMessage> which has only a getter\n    at <anonymous> (C:\\Users\\nikun\\OneDrive\\Desktop\\evn\\src\\middlewares\\validate.middleware.ts:12:11)\n    at Layer.handleRequest (C:\\Users\\nikun\\OneDrive\\Desktop\\evn\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (C:\\Users\\nikun\\OneDrive\\Desktop\\evn\\node_modules\\router\\lib\\route.js:157:13)\n    at optionalAuth (C:\\Users\\nikun\\OneDrive\\Desktop\\evn\\src\\middlewares\\auth.middleware.ts:44:14)\n    at Layer.handleRequest (C:\\Users\\nikun\\OneDrive\\Desktop\\evn\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (C:\\Users\\nikun\\OneDrive\\Desktop\\evn\\node_modules\\router\\lib\\route.js:157:13)\n    at Route.dispatch (C:\\Users\\nikun\\OneDrive\\Desktop\\evn\\node_modules\\router\\lib\\route.js:117:3)\n    at handle (C:\\Users\\nikun\\OneDrive\\Desktop\\evn\\node_modules\\router\\index.js:435:11)\n    at Layer.handleRequest (C:\\Users\\nikun\\OneDrive\\Desktop\\evn\\node_modules\\router\\lib\\layer.js:152:17)\n    at C:\\Users\\nikun\\OneDrive\\Desktop\\evn\\node_modules\\router\\index.js:295:15"
+  }
+}

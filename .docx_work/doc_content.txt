@@ -1,0 +1,361 @@
+[Title]SHOBHIT UNIVERSITY GANGOH EVENTS PLATFORM
+[Subtitle]Shobhit University, Gangoh
+[Subtitle]Project Documentation
+[Normal]Date: April 10, 2026
+[PageBreak]
+[Heading1]TABLE OF CONTENTS
+[Normal]1. Introduction
+[Normal]2. Project Overview
+[Normal]3. User Roles and Permissions
+[Normal]4. System Architecture
+[Normal]5. Technology Stack
+[Normal]6. Database Design
+[Normal]7. Backend Development
+[Normal]8. Frontend Development
+[Normal]9. Authentication and Account Security
+[Normal]10. Student Portal
+[Normal]11. Admin Console
+[Normal]12. Coordinator Workflow
+[Normal]13. API Documentation Summary
+[Normal]14. Security Implementation
+[Normal]15. User Interface and Experience
+[Normal]16. Deployment and Configuration
+[Normal]17. Current Status and Future Enhancements
+[Normal]18. Conclusion
+[Normal]19. References
+[PageBreak]
+[Heading1]1. INTRODUCTION
+[Heading2]1.1 Project Background
+[Normal]The Shobhit University Gangoh Events Platform is a full-stack web application built to manage university events through a modern public website and an administrative control system. The platform is designed around the real needs of campus event publishing, student registrations, schedule visibility, university badge verification, and role-based management for admins and coordinators.
+[Heading2]1.2 Problem Statement
+[Normal]University events are often announced across multiple disconnected channels, which creates confusion for students and extra manual work for organizers. Event visibility, registration approval, identity verification, and participant tracking become difficult when the process is handled through ad-hoc forms or spreadsheets. A centralized system is required to present events professionally while also handling operational workflows securely.
+[Heading2]1.3 Project Objectives
+[Normal]- Create a public-facing university event website with a cleaner, fest-style presentation.
+[Normal]- Provide secure student registration, login, email verification, and password reset.
+[Normal]- Allow admins to create, update, publish, and manage events from a dedicated dashboard.
+[Normal]- Support both solo and team participation models.
+[Normal]- Support open events as well as university-only events protected by badge verification.
+[Normal]- Enable coordinators to manage participation review for assigned events.
+[Normal]- Maintain a structured backend that can be extended later with media, payments, notifications, and richer event groups.
+[Heading2]1.4 Scope of the Project
+[Normal]The current scope includes a React-based frontend in the client folder and an Express, Prisma, and PostgreSQL backend in the src folder. The project covers public browsing, student accounts, profile management, event registrations, admin operations, and coordinator review workflows. The system is implemented as a REST API driven application with a strongly typed frontend and backend.
+[PageBreak]
+[Heading1]2. PROJECT OVERVIEW
+[Heading2]2.1 System Description
+[Normal]This project is a university event management platform tailored for Shobhit University, Gangoh. It combines a public event discovery interface with a secure operational backend. Students can browse events, follow the schedule, maintain their profile, verify their university identity, and register for events. Administrators manage event lifecycle and users, while coordinators handle assigned event participation review.
+[Heading2]2.2 Core Functional Modules
+[Normal]- Public landing page and navigation
+[Normal]- Events listing and event detail pages
+[Normal]- Schedule page for date-based discovery
+[Normal]- Student registration and login
+[Normal]- Email verification using OTP
+[Normal]- Password reset using OTP
+[Normal]- Profile and university badge workflow
+[Normal]- Solo and team event registration
+[Normal]- My Events activity page
+[Normal]- Admin dashboard
+[Normal]- Coordinator desk
+[Heading2]2.3 System Behavior
+[Normal]The application follows a clean request and response model. The frontend calls backend API endpoints using Axios. The backend validates requests through Zod schemas, applies authentication and authorization middleware, performs business logic in services, and persists data using Prisma on PostgreSQL.
+[PageBreak]
+[Heading1]3. USER ROLES AND PERMISSIONS
+[Heading2]3.1 Student
+[Normal]Students are the primary end users of the platform. They can create accounts, verify their email, log in, complete their profile, submit university details for badge review, browse events, register for solo or team events, cancel registrations where allowed, view their personal event activity, and request account deletion through OTP verification.
+[Heading2]3.2 Admin
+[Normal]Admins have full access to the administrative workspace. They can create additional admin accounts, promote users to admin, activate or deactivate users, review university badge submissions, manage site content, create or update events, delete events, assign coordinators to specific events, and review platform data through the admin dashboard.
+[Heading2]3.3 Coordinator
+[Normal]A coordinator is an assigned user who manages participation review for a specific event during a defined time window. Coordinators are not a permanent standalone account type in the database. Instead, coordinator access is derived through event-specific coordinator assignments. Coordinators can access assigned events and approve or reject event registrations according to the workflow configured by admins.
+[Heading2]3.4 Role Enforcement
+[Normal]Role enforcement is handled by backend middleware and service-level permission checks. Admin routes require ADMIN role access. Coordinator review actions are allowed only for admins or active coordinators assigned to the specific event. Inactive accounts are blocked from authenticated flows.
+[PageBreak]
+[Heading1]4. SYSTEM ARCHITECTURE
+[Heading2]4.1 Architectural Style
+[Normal]The application uses a layered web architecture. The frontend is a client-side React application. The backend is an Express API using controllers, services, validators, utilities, and middleware. Prisma acts as the ORM and PostgreSQL is the database layer.
+[Heading2]4.2 High-Level Flow
+[Normal]Browser -> React frontend -> Axios API calls -> Express routes -> Controllers -> Services -> Prisma -> PostgreSQL
+[Heading2]4.3 Backend Structure
+[Normal]The src folder is organized into routes, controllers, services, middlewares, validators, config, utils, and type declarations. This keeps API wiring, business logic, validation, and infrastructure concerns separated cleanly.
+[Heading2]4.4 Frontend Structure
+[Normal]The client/src folder is organized into pages, layout components, context, hooks, shared utilities, and types. Public pages and operational pages such as admin, profile, my-events, and coordinator are kept separate while still sharing a common layout and API layer.
+[Heading2]4.5 Scalability Considerations
+[Normal]The codebase is structured so that features such as event groups, background images, site branding, file uploads, notifications, and payment flows can be extended without rewriting the whole application.
+[PageBreak]
+[Heading1]5. TECHNOLOGY STACK
+[Heading2]5.1 Frontend Technologies
+[Normal]- React 19
+[Normal]- TypeScript
+[Normal]- Vite
+[Normal]- Tailwind CSS 4
+[Normal]- Framer Motion
+[Normal]- React Router
+[Normal]- Axios
+[Normal]- React Hot Toast
+[Heading2]5.2 Backend Technologies
+[Normal]- Node.js
+[Normal]- Express 5
+[Normal]- TypeScript
+[Normal]- Prisma ORM
+[Normal]- PostgreSQL
+[Normal]- JSON Web Tokens
+[Normal]- bcryptjs
+[Normal]- Zod
+[Normal]- Nodemailer
+[Heading2]5.3 Development Tools
+[Normal]- npm for package management
+[Normal]- tsx for backend development server execution
+[Normal]- Prisma CLI for schema generation and database synchronization
+[Normal]- TypeScript compiler for backend and frontend checks
+[Heading2]5.4 Why This Stack
+[Normal]This stack was chosen for maintainability, clarity, and type safety. React and TypeScript provide a predictable frontend developer experience. Express and Prisma provide a flexible backend and clean data access layer. PostgreSQL gives the application a reliable relational data model suited for users, events, registrations, and review workflows.
+[PageBreak]
+[Heading1]6. DATABASE DESIGN
+[Heading2]6.1 Core Models
+[Normal]The database schema includes User, OtpCode, UniversityBadgeLog, SiteContent, EventGroup, Event, CoordinatorAssignment, Team, TeamMember, and EventRegistration as the central models for the current platform.
+[Heading2]6.2 User Model
+[Normal]The User model stores account information such as email, optional phone, hashed password, full name, account role, active state, email verification state, and university profile details including university name, university email, student ID, department, course, year, and badge status.
+[Heading2]6.3 OTP Model
+[Normal]The OtpCode model stores hashed OTP entries used for email verification, password reset, and account deletion confirmation. Each OTP includes its purpose, status, expiration time, and audit timestamps.
+[Heading2]6.4 University Verification
+[Normal]UniversityBadgeLog maintains a history of badge review state transitions, including pending, verified, and rejected statuses. This creates a trackable audit trail for student badge submissions and admin reviews.
+[Heading2]6.5 Event Models
+[Normal]EventGroup represents a higher-level event collection and supports a future fest-style grouped-event structure. Event stores event-specific details such as title, slug, description, participation type, audience scope, status, payment requirement, registration window, venue, and scheduling data.
+[Heading2]6.6 Participation Models
+[Normal]Team and TeamMember support team registrations where one captain creates a team and optional members are linked to the same event. EventRegistration stores the participation record, status, payment state, review details, and the connection to either a solo user or a team registration.
+[Heading2]6.7 Coordinator Model
+[Normal]CoordinatorAssignment connects a user to a specific event with a start time, end time, active flag, assigning admin, and optional permission metadata. This model enables event-specific coordinator moderation without permanently changing the user’s main role.
+[Heading2]6.8 Site Content Model
+[Normal]SiteContent stores configurable public-facing text such as college name, festival name, hero title, subtitle, and contact details. This allows the website branding to be updated from the backend later if needed.
+[PageBreak]
+[Heading1]7. BACKEND DEVELOPMENT
+[Heading2]7.1 API Layer
+[Normal]The Express backend exposes versioned routes under /api/v1. The API is split into auth, profile, admin, events, site-content, and coordinator route groups. Each route group maps to controller functions that delegate to service-layer logic.
+[Heading2]7.2 Controllers and Services
+[Normal]Controllers remain thin and are responsible for request and response handling. Services contain the actual business rules such as registration validation, event creation logic, OTP validation, coordinator access checks, and university badge workflow behavior.
+[Heading2]7.3 Validation
+[Normal]Zod schemas are used to validate request bodies, params, and query strings before the request reaches the business logic layer. This reduces invalid input and keeps service logic focused on real business rules.
+[Heading2]7.4 Error Handling
+[Normal]The backend has centralized error handling for validation errors, known Prisma database errors, API errors, and unexpected internal exceptions. Clear JSON messages are returned so the frontend can show meaningful feedback.
+[Heading2]7.5 Data Access
+[Normal]Prisma is configured through a PostgreSQL adapter and used consistently across services. This provides typed queries, consistent relationships, and predictable database operations.
+[Heading2]7.6 Current Backend Capabilities
+[Normal]- Registration with password
+[Normal]- Email verification OTP flow
+[Normal]- Password reset OTP flow
+[Normal]- Authenticated current user endpoint
+[Normal]- Profile retrieval
+[Normal]- University badge submission
+[Normal]- Secure account deletion with OTP
+[Normal]- Event listing and event detail retrieval
+[Normal]- Solo and team event registration
+[Normal]- Registration cancellation
+[Normal]- Admin event CRUD
+[Normal]- Admin user access control
+[Normal]- Admin university badge review
+[Normal]- Coordinator assignment and coordinator review endpoints
+[PageBreak]
+[Heading1]8. FRONTEND DEVELOPMENT
+[Heading2]8.1 Public Experience
+[Normal]The frontend presents a bright and cleaner event website focused on Shobhit University Gangoh. The current top-level navigation is intentionally simple and keeps the public structure focused on Events, Schedule, and My Events.
+[Heading2]8.2 Pages Implemented
+[Normal]- Home page
+[Normal]- Events page
+[Normal]- Event detail page
+[Normal]- Schedule page
+[Normal]- Login page
+[Normal]- Signup page
+[Normal]- Verify email page
+[Normal]- Reset password page
+[Normal]- Profile page
+[Normal]- My Events page
+[Normal]- Admin dashboard
+[Normal]- Coordinator page
+[Heading2]8.3 State and API Integration
+[Normal]The AuthProvider manages the authenticated user and token lifecycle. Axios attaches bearer tokens automatically through a request interceptor. Protected pages such as profile, my-events, admin, and coordinator rely on authenticated API calls and navigation redirects where needed.
+[Heading2]8.4 Frontend Design Direction
+[Normal]The current UI direction is brighter and more campus-event oriented than a generic dark admin dashboard. The public home page and schedule page are intended to move the site closer to a university fest feel while preserving the underlying management functionality.
+[PageBreak]
+[Heading1]9. AUTHENTICATION AND ACCOUNT SECURITY
+[Heading2]9.1 Registration
+[Normal]Students register using full name, email, password, and optional phone number. Passwords are hashed using bcrypt before storage. A new account remains unverified until the email OTP is confirmed.
+[Heading2]9.2 Email Verification
+[Normal]The email verification flow issues a six-digit OTP, stores only the hashed OTP, applies expiration logic, and verifies the account after successful OTP submission. This prevents unverified accounts from logging in.
+[Heading2]9.3 Login
+[Normal]Login is handled through email and password. On success, the backend returns a JWT token and a user snapshot. The frontend stores the token in localStorage and uses it for authenticated API calls.
+[Heading2]9.4 Password Reset
+[Normal]Users can request a password reset OTP, receive a verification code, and submit a new password. Password reset OTPs are purpose-scoped and validated independently from email verification or account deletion OTPs.
+[Heading2]9.5 Account Deletion
+[Normal]Account deletion is protected by another OTP flow. The user requests a delete OTP and then confirms deletion by submitting the code. The backend marks the account inactive and closes active coordinator assignments rather than silently deleting records.
+[Heading2]9.6 Current User Snapshot
+[Normal]The auth snapshot returned by the backend includes role, effectiveRoles, email verification state, university verification state, and coordinator assignment context where applicable. This allows the frontend to render correct role-aware navigation and restricted pages.
+[PageBreak]
+[Heading1]10. STUDENT PORTAL
+[Heading2]10.1 Public Browsing
+[Normal]Students and visitors can browse published events and use the schedule page to understand upcoming activity. The event listing supports filtering by participation type, audience scope, and payment requirement.
+[Heading2]10.2 Event Detail
+[Normal]The event detail page shows title, description, venue, date, registration window, payment information, registration count, and the current user’s registration state if authenticated.
+[Heading2]10.3 Solo Registration
+[Normal]For solo events, authenticated users can register directly. The backend checks event visibility, registration window, capacity, and badge requirements before creating the registration.
+[Heading2]10.4 Team Registration
+[Normal]For team events, the captain creates a team and can optionally add teammate user IDs. Team size validation, duplicate participant protection, and university badge restrictions are enforced server-side.
+[Heading2]10.5 University Badge Workflow
+[Normal]Students can submit university information from the profile page. Admins review the submission and can verify or reject the badge. University-only events can then be restricted to verified students.
+[Heading2]10.6 Personal Activity
+[Normal]The My Events page and the profile page display upcoming, ongoing or recent, and past registrations so students can track their participation history in one place.
+[PageBreak]
+[Heading1]11. ADMIN CONSOLE
+[Heading2]11.1 Admin Dashboard Purpose
+[Normal]The admin dashboard is the main operational panel for managing users and events. It is separated from the public browsing experience and is intended for internal platform control rather than public content browsing.
+[Heading2]11.2 User Management
+[Normal]Admins can list users, promote eligible users to admin, create a new admin account directly, activate or deactivate user accounts, and review university badge submissions. Inactive users are blocked from authentication-protected routes.
+[Heading2]11.3 Event Management
+[Normal]Admins can create, update, publish, cancel, complete, and delete events. The current frontend event form is intentionally simpler, and the backend supports it by assigning such events to a default event group when no explicit group is provided.
+[Heading2]11.4 Event Publication Control
+[Normal]The admin chooses whether an event is draft, published, cancelled, or completed. Only published events are visible publicly and can accept registrations within the configured registration window.
+[Heading2]11.5 Future-Ready Features
+[Normal]The backend also contains support structures for site content management, event groups, media-ready event fields, and coordinator assignment. These make it possible to evolve the platform further without rebuilding the data model.
+[PageBreak]
+[Heading1]12. COORDINATOR WORKFLOW
+[Heading2]12.1 Coordinator Assignment
+[Normal]Admins can assign a user as a coordinator for a specific event and define the start and end time of that assignment. This makes the coordinator role temporary, event-specific, and auditable.
+[Heading2]12.2 Coordinator Access
+[Normal]When a coordinator is active for a specific event, the backend includes that assignment in the authenticated user snapshot. The frontend can then expose coordinator-specific access, such as the coordinator desk.
+[Heading2]12.3 Participation Review
+[Normal]Coordinators can retrieve assigned events and review registrations for those events through coordinator endpoints. Registrations can be confirmed or rejected, and a review note can be stored for auditability.
+[Heading2]12.4 Why This Design
+[Normal]This design avoids turning coordinator into a permanent top-level user role. It keeps the system flexible and better aligned with how event staffing often changes over time in universities.
+[PageBreak]
+[Heading1]13. API DOCUMENTATION SUMMARY
+[Heading2]13.1 Authentication Routes
+[Normal]- POST /api/v1/auth/register
+[Normal]- POST /api/v1/auth/login
+[Normal]- POST /api/v1/auth/request-verification-otp
+[Normal]- POST /api/v1/auth/verify-email
+[Normal]- POST /api/v1/auth/request-password-reset-otp
+[Normal]- POST /api/v1/auth/reset-password
+[Normal]- GET /api/v1/auth/me
+[Heading2]13.2 Profile Routes
+[Normal]- GET /api/v1/profile/me
+[Normal]- PATCH /api/v1/profile/university
+[Normal]- POST /api/v1/profile/me/request-delete-otp
+[Normal]- DELETE /api/v1/profile/me
+[Heading2]13.3 Event Routes
+[Normal]- GET /api/v1/events
+[Normal]- GET /api/v1/events/groups
+[Normal]- GET /api/v1/events/groups/:groupId
+[Normal]- GET /api/v1/events/:eventId
+[Normal]- POST /api/v1/events/:eventId/register
+[Normal]- POST /api/v1/events/:eventId/register-team
+[Normal]- DELETE /api/v1/events/:eventId/register
+[Heading2]13.4 Admin Routes
+[Normal]- GET /api/v1/admin/users
+[Normal]- GET /api/v1/admin/events
+[Normal]- GET /api/v1/admin/event-groups
+[Normal]- GET /api/v1/admin/site-content
+[Normal]- PATCH /api/v1/admin/site-content
+[Normal]- POST /api/v1/admin/create-admin
+[Normal]- POST /api/v1/admin/users/:userId/make-admin
+[Normal]- PATCH /api/v1/admin/users/:userId/activate
+[Normal]- PATCH /api/v1/admin/users/:userId/deactivate
+[Normal]- PATCH /api/v1/admin/users/:userId/university-badge
+[Normal]- POST /api/v1/admin/events
+[Normal]- PATCH /api/v1/admin/events/:eventId
+[Normal]- DELETE /api/v1/admin/events/:eventId
+[Normal]- POST /api/v1/admin/event-groups
+[Normal]- PATCH /api/v1/admin/event-groups/:groupId
+[Normal]- DELETE /api/v1/admin/event-groups/:groupId
+[Normal]- POST /api/v1/admin/events/:eventId/coordinators
+[Normal]- PATCH /api/v1/admin/coordinator-assignments/:assignmentId/deactivate
+[Heading2]13.5 Coordinator Routes
+[Normal]- GET /api/v1/coordinator/events
+[Normal]- GET /api/v1/coordinator/events/:eventId/registrations
+[Normal]- PATCH /api/v1/coordinator/registrations/:registrationId/review
+[PageBreak]
+[Heading1]14. SECURITY IMPLEMENTATION
+[Heading2]14.1 Password Security
+[Normal]Passwords are hashed using bcrypt before being stored in the database. Plain text passwords are never persisted.
+[Heading2]14.2 Token Security
+[Normal]Authenticated access is protected through JWT bearer tokens. The backend validates the token and resolves the active user on each protected request.
+[Heading2]14.3 OTP Handling
+[Normal]OTP values are hashed before storage, time-limited, purpose-specific, and status-tracked. Invalid submissions increase attempt counters, and used or expired OTPs are marked accordingly.
+[Heading2]14.4 Validation and Input Safety
+[Normal]Zod validation blocks malformed requests before they reach business logic. Prisma parameterized access protects the data layer from direct query injection risks.
+[Heading2]14.5 Role and Account Controls
+[Normal]Admin-only actions are protected by role middleware. Event review actions require either admin role or a valid active coordinator assignment. Inactive users are denied authenticated access.
+[Heading2]14.6 Error Handling
+[Normal]The backend returns structured JSON messages for validation failures, API errors, Prisma request failures, and unexpected server errors. This gives the frontend enough information to display useful feedback while keeping the architecture maintainable.
+[PageBreak]
+[Heading1]15. USER INTERFACE AND EXPERIENCE
+[Heading2]15.1 Public UI Direction
+[Normal]The public-facing interface is moving toward a brighter, cleaner campus-event presentation rather than a heavy utility dashboard. Navigation has been intentionally simplified so that students focus first on Events, Schedule, and My Events.
+[Heading2]15.2 Admin Experience
+[Normal]The admin console remains operational and information-dense because it is a control surface rather than a marketing page. It is separated from the public navigation so the student-facing experience remains uncluttered.
+[Heading2]15.3 Responsive Design
+[Normal]The frontend uses flexible layouts, cards, stacked sections, and grid-based organization so that the app remains usable on desktop and mobile devices.
+[Heading2]15.4 Interaction Design
+[Normal]The application uses toasts, loading states, role-aware redirects, and status badges to communicate feedback. This keeps user flows clear even when operations such as OTP verification, profile updates, or event registration happen asynchronously.
+[PageBreak]
+[Heading1]16. DEPLOYMENT AND CONFIGURATION
+[Heading2]16.1 Local Development
+[Normal]The backend runs with npm run dev from the root project. The frontend runs with npm --prefix client run dev. The database schema is synchronized using Prisma CLI commands.
+[Heading2]16.2 Important Commands
+[Normal]- npm run prisma:generate
+[Normal]- npm run db:push
+[Normal]- npm run db:seed
+[Normal]- npm run build
+[Normal]- npm --prefix client run dev
+[Heading2]16.3 Environment Configuration
+[Normal]The application depends on environment variables for DATABASE_URL, JWT secret configuration, OTP settings, CORS origin, and mail transport credentials. Correct environment configuration is required for authentication and email OTP delivery to work properly.
+[Heading2]16.4 Database Sync
+[Normal]Prisma is used to synchronize the schema and generate the client. Because the project depends on typed relations, it is important to regenerate Prisma and push or migrate schema changes whenever the data model evolves.
+[PageBreak]
+[Heading1]17. CURRENT STATUS AND FUTURE ENHANCEMENTS
+[Heading2]17.1 Current Implemented Scope
+[Normal]The platform currently includes full authentication, OTP verification and reset flows, user profiles, university badge workflow, public event discovery, event detail views, solo and team registrations, my-events tracking, admin event and user management, coordinator assignment support, and a cleaner public UI direction.
+[Heading2]17.2 Near-Term Improvements
+[Normal]- Complete fest-style grouped event UI throughout the public pages
+[Normal]- Add event and site media management through upload or hosted image URLs
+[Normal]- Expand coordinator review UI directly in the frontend
+[Normal]- Improve analytics inside the admin dashboard
+[Heading2]17.3 Future Enhancements
+[Normal]- Payment gateway integration for paid events
+[Normal]- File upload for university proof documents
+[Normal]- Notification system for registration state changes
+[Normal]- Richer event group landing pages
+[Normal]- Public-facing featured collections and banners
+[Normal]- Swagger or OpenAPI documentation
+[Heading2]17.4 Engineering Outlook
+[Normal]The codebase is now structured so that future growth can happen in layers. The backend already contains extensible support for event groups, coordinator assignments, site content, and media-aware models. This makes the project a good foundation for turning the application into a stronger university fest platform over time.
+[PageBreak]
+[Heading1]18. CONCLUSION
+[Heading2]18.1 Project Summary
+[Normal]The Shobhit University Gangoh Events Platform is a practical full-stack application that combines public event presentation with secure management workflows. It is designed to support both user-facing discovery and administrator-facing operations within one codebase.
+[Heading2]18.2 Key Outcomes
+[Normal]- Secure student account creation and access control
+[Normal]- OTP-based email verification and password reset
+[Normal]- Clean event registration workflows for solo and team participation
+[Normal]- University badge approval for restricted event access
+[Normal]- Admin management tools for users and events
+[Normal]- Coordinator moderation for assigned events
+[Normal]- A brighter public UI direction better suited to a campus event website
+[Heading2]18.3 Final Note
+[Normal]This project is no longer a generic CRUD-only application. It is an extensible university event platform with a real identity, a clear operational backend, and a frontend that can continue evolving toward a stronger fest-style experience.
+[PageBreak]
+[Heading1]19. REFERENCES
+[Normal]1. React Documentation - https://react.dev/
+[Normal]2. Vite Documentation - https://vite.dev/
+[Normal]3. Express Documentation - https://expressjs.com/
+[Normal]4. Prisma Documentation - https://www.prisma.io/docs
+[Normal]5. PostgreSQL Documentation - https://www.postgresql.org/docs/
+[Normal]6. TypeScript Documentation - https://www.typescriptlang.org/docs/
+[Normal]7. Zod Documentation - https://zod.dev/
+[Normal]8. Nodemailer Documentation - https://nodemailer.com/
+[Normal]9. React Router Documentation - https://reactrouter.com/
+[Normal]10. Tailwind CSS Documentation - https://tailwindcss.com/docs
+[PageBreak]
+[Heading1]APPENDIX
+[Heading2]A. CURRENT PROJECT STRUCTURE
+[Normal]Root project contains the backend source in the src folder, the frontend application in client/src, Prisma schema and seed files in prisma, and configuration files such as package.json, tsconfig.json, prisma.config.ts, and environment files.
+[Heading2]B. FRONTEND SUMMARY
+[Normal]client/src contains layout components, context, hooks, shared utilities, type declarations, and pages for home, events, schedule, event detail, login, signup, verify-email, reset-password, profile, my-events, admin, coordinator, contact, and not-found.
+[Heading2]C. BACKEND SUMMARY
+[Normal]src contains routes, controllers, services, validators, middleware, configuration, utilities, and type declarations. The current backend is centered around modular route groups and typed service logic over Prisma and PostgreSQL.
