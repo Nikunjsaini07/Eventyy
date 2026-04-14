@@ -192,3 +192,47 @@ Required environment variables on Render:
 - `CLOUDINARY_API_SECRET`
 
 A sample configuration is included in `.env.example`, and a Render blueprint is included in `render.yaml`.
+
+## Vercel Deployment
+
+This repo can also be deployed to Vercel as a single project:
+
+- frontend: built from `client/dist`
+- backend API: served through the serverless function in `api/index.ts`
+
+Files added for this flow:
+
+- `vercel.json`
+- `api/index.ts`
+
+Recommended Vercel setup:
+
+- Framework preset: `Other`
+- Root directory: project root
+- Build and install commands are already defined in `vercel.json`
+
+How it works:
+
+- `npm run vercel:install` installs root and client dependencies
+- `npm run vercel:build` builds the Vite frontend in `client`
+- Vercel serves `client/dist` as the site output
+- Requests to `/api/*` are rewritten to the Express app exported from `api/index.ts`
+
+Required environment variables on Vercel:
+
+- `NODE_ENV=production`
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `JWT_EXPIRES_IN`
+- `OTP_TTL_MINUTES`
+- `SENDER_EMAIL`
+- `CORS_ORIGIN`
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+
+Important notes for Vercel:
+
+- Set `CORS_ORIGIN` to your deployed Vercel frontend domain.
+- The backend runs as a serverless function, so local-disk uploads are not suitable; Cloudinary-backed uploads are the right approach here.
+- Prisma is generated during the root install/build flow already used by this project.
