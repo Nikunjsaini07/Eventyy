@@ -169,13 +169,14 @@ This backend can be deployed to Render as a Node web service.
 
 Recommended settings:
 
-- Build command: `npm install && npm run build`
+- Build command: `npm install --include=dev && npm run build`
 - Start command: `npm start`
 
 Why this is enough:
 
 - `npm run build` now runs `prisma generate` before TypeScript compilation.
 - You do not need a separate `npx prisma generate` step in Render anymore.
+- `--include=dev` is important on Render because TypeScript and `@types/*` packages are needed during the build step.
 
 Required environment variables on Render:
 
