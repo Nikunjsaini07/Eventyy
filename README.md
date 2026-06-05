@@ -1,254 +1,194 @@
-# EVN Backend
+<div align="center">
+  <h1>🎉 Eventyy (EVN)</h1>
+  <p><strong>A Modern, Multi-Role University Event Management Platform</strong></p>
 
-Backend foundation for a multi-role event platform using:
+  [![React](https://img.shields.io/badge/React-19-blue.svg)](https://react.dev/)
+  [![Vite](https://img.shields.io/badge/Vite-8-purple.svg)](https://vitejs.dev/)
+  [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4-38B2AC.svg)](https://tailwindcss.com/)
+  [![Express.js](https://img.shields.io/badge/Express.js-5-lightgrey.svg)](https://expressjs.com/)
+  [![Prisma](https://img.shields.io/badge/Prisma-7-2D3748.svg)](https://www.prisma.io/)
+  [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)](https://www.postgresql.org/)
+</div>
 
-- `Express`
-- `Prisma`
-- `PostgreSQL`
-- `JWT`
-- `Password auth with OTP verification/reset`
+<br />
 
-## Roles
+## 📖 Overview
 
-- `ADMIN`
-- `STUDENT`
-- `COORDINATOR` via temporary assignment records
+Eventyy is a comprehensive, full-stack event management platform tailored for universities. It enables seamless coordination of fests, competitions, and visits. With dedicated roles for Admins, Coordinators, and Students, the platform handles everything from secure OTP registrations to complex bracket and match progression for competitive events.
 
-Admins are real user roles. Coordinators are temporary assignments made by admins for a specific event and a specific time window.
+---
 
-## Main Features
+## ✨ Key Features
 
-- Student registration with password
-- Email verification OTP flow
-- Password login
-- Password reset OTP flow
-- JWT authentication
-- University badge submission and admin approval flow
-- Open events and university-only events
-- Event groups/fests that contain multiple child events
-- Event types:
-  - `VISITING`
-  - `PVP`
-  - `RANKED`
-- Solo and team events
-- Optional paid events
-- Coordinator tools for:
-  - round management
-  - PVP match creation
-  - winner progression
-  - leaderboard updates
-  - final result publishing
+- 🔐 **Robust Authentication:** OTP-based email verification, password reset flows, and JWT-secured routes.
+- 🎓 **University Centric:** Built-in university badge submission and admin approval workflows. Open and university-restricted events.
+- 🎭 **Role-Based Access Control:** 
+  - `ADMIN`: Full platform control.
+  - `COORDINATOR`: Temporary, event-specific administrative rights assigned by admins.
+  - `STUDENT`: Base participant role.
+- 🏆 **Comprehensive Event Types:**
+  - `VISITING`: Seminars, guest lectures, and exhibitions.
+  - `PVP`: Player vs Player competitive tournaments with bracket management.
+  - `RANKED`: Score-based leaderboard competitions.
+- 👥 **Solo & Team Registration:** Support for individual participation and team creation.
+- 📊 **Match & Bracket Management:** Built-in tools for coordinators to manage rounds, progress winners, update leaderboards, and publish final results.
 
-## Project Structure
+---
+
+## 🛠️ Tech Stack
+
+### Frontend (Client)
+- **Framework:** React 19 + Vite
+- **Styling:** Tailwind CSS v4
+- **Animations:** Framer Motion
+- **Icons:** Lucide React
+- **Routing:** React Router v7
+
+### Backend (API)
+- **Framework:** Express.js (Node.js)
+- **Database:** PostgreSQL with Prisma ORM
+- **Authentication:** JWT, bcryptjs
+- **Emails:** Nodemailer
+- **File Uploads:** Multer & Cloudinary
+
+---
+
+## 📂 Project Structure
 
 ```text
-prisma/
-  schema.prisma
-src/
-  config/
-  controllers/
-  middlewares/
-  routes/
-  services/
-  utils/
-  validators/
+evn/
+├── client/                 # React Frontend
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── pages/          # Route components
+│   │   ├── hooks/          # Custom React hooks
+│   │   └── utils/          # Frontend helpers
+│   └── package.json
+├── src/                    # Express Backend
+│   ├── config/             # Environment & service configurations
+│   ├── controllers/        # Request handlers
+│   ├── middlewares/        # Auth and validation middlewares
+│   ├── routes/             # Express route definitions
+│   ├── services/           # Business logic (DB interactions)
+│   └── validators/         # Zod schemas for request validation
+├── prisma/                 # Database
+│   ├── schema.prisma       # Database schema
+│   └── seed.ts             # Database seeding script
+└── package.json
 ```
 
-The code is intentionally split into small service modules so you can change business rules later without rewriting the whole app.
-The request flow now follows:
+---
 
-`route -> controller -> service -> prisma`
+## 🚀 Getting Started
 
-## Environment
+### Prerequisites
 
-Copy `.env.example` to `.env` and update:
+- [Node.js](https://nodejs.org/) (v22+ recommended)
+- [PostgreSQL](https://www.postgresql.org/) running locally or remotely
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Nikunjsaini07/Eventyy.git
+   cd Eventyy
+   ```
+
+2. **Install Backend Dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Install Frontend Dependencies:**
+   ```bash
+   cd client
+   npm install
+   cd ..
+   ```
+
+### Environment Setup
+
+Create a `.env` file in the root directory (based on `.env.example`):
 
 ```env
 PORT=4000
 NODE_ENV=development
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/evn?schema=public"
-JWT_SECRET="replace-with-a-long-secret"
+DATABASE_URL="postgresql://postgres:password@localhost:5432/evn?schema=public"
+JWT_SECRET="replace-with-a-very-long-secret"
 JWT_EXPIRES_IN="7d"
 OTP_TTL_MINUTES=10
 SENDER_EMAIL="noreply@example.com"
+
+# Cloudinary (For University Badges)
+CLOUDINARY_CLOUD_NAME="your_cloud_name"
+CLOUDINARY_API_KEY="your_api_key"
+CLOUDINARY_API_SECRET="your_api_secret"
+
+# Admin Seed Info
 SEED_ADMIN_EMAIL="admin@example.com"
 SEED_ADMIN_NAME="Platform Admin"
 SEED_ADMIN_PASSWORD="ChangeMe123!"
 ```
 
-## Scripts
-
-```bash
-npm run dev
-npm run build
-npm run prisma:generate
-npm run db:push
-npm run db:migrate
-npm run db:seed
+Create a `.env` file in the `client/` directory:
+```env
+VITE_API_URL="http://localhost:4000/api/v1"
 ```
 
-## API Overview
+### Database Setup
 
-Base path: `/api/v1`
+1. Push the Prisma schema to your database:
+   ```bash
+   npm run db:push
+   ```
+   *(Alternatively, run `npm run db:migrate` if using migration history)*
 
-### Auth
+2. Seed the database with the initial Admin user:
+   ```bash
+   npm run db:seed
+   ```
 
-- `POST /auth/register`
-- `POST /auth/login`
-- `POST /auth/request-verification-otp`
-- `POST /auth/verify-email`
-- `POST /auth/request-password-reset-otp`
-- `POST /auth/reset-password`
-- `GET /auth/me`
+### Running the Application
 
-### Profile
+**Run backend and frontend separately:**
 
-- `GET /profile/me`
-- `PATCH /profile/university`
+1. **Start the Backend:**
+   ```bash
+   # From root directory
+   npm run dev
+   ```
 
-### Admin
+2. **Start the Frontend:**
+   ```bash
+   # In a new terminal
+   cd client
+   npm run dev
+   ```
 
-- `GET /admin/users`
-- `POST /admin/users/:userId/make-admin`
-- `PATCH /admin/users/:userId/university-badge`
-- `POST /admin/coordinators`
-- `GET /admin/coordinators`
-- `PATCH /admin/coordinators/:assignmentId/deactivate`
-- `POST /admin/event-groups`
-- `PATCH /admin/event-groups/:groupId`
-- `DELETE /admin/event-groups/:groupId`
-- `POST /admin/events`
-- `PATCH /admin/events/:eventId`
-- `DELETE /admin/events/:eventId`
+---
 
-### Events
+## 🌐 Deployment
 
-- `GET /events/groups`
-- `GET /events/groups/:groupId`
-- `GET /events`
-- `GET /events/:eventId`
-- `POST /events/:eventId/register`
-- `DELETE /events/:eventId/register`
-- `POST /events/:eventId/register-team`
-- `GET /events/:eventId/bracket`
-- `GET /events/:eventId/leaderboard`
+### Backend (Render)
+The backend is configured for deployment on Render. 
+- **Build Command:** `npm install --include=dev && npm run build`
+- **Start Command:** `npm start`
+*(Ensure all `.env` variables are added to Render environment settings)*
 
-### Competition
+### Frontend (Vercel)
+The frontend is optimized for Vercel deployment.
+- Framework Preset: `Other`
+- Root Directory: `./` (Project Root)
+- The commands are already handled via `vercel.json` (`npm run vercel:install` & `npm run vercel:build`).
 
-- `POST /competition/events/:eventId/rounds`
-- `GET /competition/events/:eventId/registrations`
-- `POST /competition/events/:eventId/matches`
-- `PATCH /competition/matches/:matchId/result`
-- `PUT /competition/events/:eventId/leaderboard`
-- `PUT /competition/events/:eventId/results`
+---
 
-## Current Assumptions
+## 📜 API Documentation
+*(Base URL: `/api/v1`)*
 
-- Email verification and password reset are OTP-based.
-- Login itself is email + password based.
-- University badge approval is handled by admins.
-- Each big fest/program is modeled as an `EventGroup`, and each actual competition/visit is a child `Event`.
-- Child events inherit parent visibility in practice:
-  - draft groups hide their child events from public users
-  - university-only groups make their child events university-only too
-- Payment support is modeled in the database, but no payment gateway is connected yet.
-- Match auto-advancement is supported through `nextMatchId` and `nextMatchSlot`.
-- Coordinators must be verified university students.
-- Coordinator assignments must be event-specific and time-bound.
+- **Auth:** `/auth/register`, `/auth/login`, `/auth/verify-email`, etc.
+- **Admin:** `/admin/users`, `/admin/event-groups`, `/admin/coordinators`
+- **Events:** `/events`, `/events/:eventId/register`, `/events/:eventId/bracket`
+- **Competition (Coordinators):** `/competition/events/:eventId/matches`
 
-## Verification
-
-Completed locally:
-
-- `npx prisma generate`
-- `npm run build`
-
-## Render Deployment
-
-This backend can be deployed to Render as a Node web service.
-
-Recommended settings:
-
-- Build command: `npm install --include=dev && npm run build`
-- Start command: `npm start`
-
-Why this is enough:
-
-- `npm run build` now runs `prisma generate` before TypeScript compilation.
-- You do not need a separate `npx prisma generate` step in Render anymore.
-- `--include=dev` is important on Render because TypeScript and `@types/*` packages are needed during the build step.
-
-Required environment variables on Render:
-
-- `NODE_ENV=production`
-- `DATABASE_URL`
-- `JWT_SECRET`
-- `JWT_EXPIRES_IN`
-- `OTP_TTL_MINUTES`
-- `SENDER_EMAIL`
-- `CORS_ORIGIN`
-- `CLOUDINARY_CLOUD_NAME`
-- `CLOUDINARY_API_KEY`
-- `CLOUDINARY_API_SECRET`
-
-A sample configuration is included in `.env.example`, and a Render blueprint is included in `render.yaml`.
-
-## Vercel Deployment
-
-This repo can also be deployed to Vercel as a frontend-only project:
-
-- frontend: built from `client/dist`
-- backend: hosted separately on Render
-
-Files used for this flow:
-
-- `vercel.json`
-
-Recommended Vercel setup:
-
-- Framework preset: `Other`
-- Root directory: project root
-- Build and install commands are already defined in `vercel.json`
-
-How it works:
-
-- `npm run vercel:install` installs only the client dependencies
-- `npm run vercel:build` builds the Vite frontend in `client`
-- Vercel serves `client/dist` as the site output
-- All frontend routes rewrite to `index.html` for React Router support
-
-Required environment variables on Vercel:
-
-- `NODE_ENV=production`
-- `DATABASE_URL`
-- `JWT_SECRET`
-- `JWT_EXPIRES_IN`
-- `OTP_TTL_MINUTES`
-- `SENDER_EMAIL`
-- `CORS_ORIGIN`
-- `CLOUDINARY_CLOUD_NAME`
-- `CLOUDINARY_API_KEY`
-- `CLOUDINARY_API_SECRET`
-
-Important notes for Vercel:
-
-- No backend code should run on Vercel in this setup.
-- The frontend should call your Render backend through `VITE_API_URL`.
-- Set `CORS_ORIGIN` on Render to your deployed Vercel frontend domain.
-
-## Vercel Frontend + Render Backend
-
-If your frontend is on Vercel and your Express backend is on Render, the frontend should not use same-origin `/api/v1` calls in production.
-
-Use this client environment variable on Vercel:
-
-- `VITE_API_URL=https://your-render-backend.onrender.com/api/v1`
-
-The frontend Axios client already supports this and falls back to:
-
-- `http://localhost:4000/api/v1` during local development
-- `/api/v1` only when no explicit frontend API URL is provided
-
-You should also make sure your Render backend allows your Vercel domain in:
-
-- `CORS_ORIGIN=https://your-vercel-app.vercel.app`
+*For full API details, refer to the backend route files in `src/routes/`.*
