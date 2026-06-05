@@ -5,7 +5,7 @@ import { ApiError } from "../utils/api-error";
 import { verifyAccessToken } from "../utils/jwt";
 
 const extractBearerToken = (authorization?: string) => {
-  if (!authorization?.startsWith("Bearer ")) {
+  if(!authorization?.startsWith("Bearer ")) {
     return null;
   }
 
