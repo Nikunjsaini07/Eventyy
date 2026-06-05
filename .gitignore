@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 node_modules
 dist
 .env
@@ -5,4 +6,39 @@ dist
 coverage
 .gitignore
 
+=======
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+>>>>>>> 6ee529e2964ce4004387ba6f217b97c662d02938
 
+# Testing
+coverage/
+
+# Production
+dist/
+build/
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Misc
+.cache/
+.eslintcache

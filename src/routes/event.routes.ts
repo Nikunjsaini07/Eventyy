@@ -7,7 +7,9 @@ import {
   listEventGroupsController,
   listEventsController,
   registerForSoloEventController,
-  registerTeamForEventController
+  registerTeamForEventController,
+  joinTeamForEventController,
+  removeTeamMemberController
 } from "../controllers/event.controller";
 import { optionalAuth, requireAuth } from "../middlewares/auth.middleware";
 import { validate } from "../middlewares/validate.middleware";
@@ -17,7 +19,9 @@ import {
   groupIdParamsSchema,
   listEventsQuerySchema,
   soloRegistrationSchema,
-  teamRegistrationSchema
+  teamRegistrationSchema,
+  joinTeamSchema,
+  removeTeamMemberSchema
 } from "../validators/event.validators";
 
 const router = Router();
@@ -63,11 +67,25 @@ router.post(
   asyncHandler(registerTeamForEventController)
 );
 
+router.post(
+  "/:eventId/join-team",
+  requireAuth,
+  validate({ params: eventIdParamsSchema, body: joinTeamSchema }),
+  asyncHandler(joinTeamForEventController)
+);
+
 router.delete(
   "/:eventId/register",
   requireAuth,
   validate({ params: eventIdParamsSchema }),
   asyncHandler(cancelEventRegistrationController)
+);
+
+router.delete(
+  "/:eventId/team/members/:userId",
+  requireAuth,
+  validate({ params: removeTeamMemberSchema }),
+  asyncHandler(removeTeamMemberController)
 );
 
 export default router;

@@ -39,70 +39,6 @@ export const getMyProfile = async (userId: string) => {
     where: { id: userId },
     select: {
       ...publicUserSelect,
-      registrations: {
-        where: {
-          status: {
-            not: RegistrationStatus.CANCELLED
-          }
-        },
-        include: {
-          event: {
-            select: {
-              id: true,
-              title: true,
-              slug: true,
-              bannerImageUrl: true,
-              participationType: true,
-              audienceScope: true,
-              status: true,
-              requiresApproval: true,
-              requiresPayment: true,
-              entryFee: true,
-              venue: true,
-              startsAt: true,
-              endsAt: true,
-              group: {
-                select: {
-                  id: true,
-                  title: true,
-                  slug: true,
-                  bannerImageUrl: true
-                }
-              }
-            }
-          },
-          team: {
-            select: {
-              id: true,
-              name: true,
-              captainId: true,
-              members: {
-                select: {
-                  id: true,
-                  role: true,
-                  user: {
-                    select: {
-                      id: true,
-                      fullName: true,
-                      email: true
-                    }
-                  }
-                }
-              }
-            }
-          },
-          reviewedBy: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true
-            }
-          }
-        },
-        orderBy: {
-          createdAt: "desc"
-        }
-      },
       createdEvents: {
         select: {
           id: true,
@@ -195,15 +131,84 @@ export const getMyProfile = async (userId: string) => {
     throw new ApiError(404, "User not found");
   }
 
+  const registrations = await prisma.eventRegistration.findMany({
+    where: {
+      OR: [
+        { userId },
+        { team: { members: { some: { userId } } } }
+      ],
+      status: {
+        not: RegistrationStatus.CANCELLED
+      }
+    },
+    include: {
+      event: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          bannerImageUrl: true,
+          participationType: true,
+          audienceScope: true,
+          status: true,
+          requiresApproval: true,
+          requiresPayment: true,
+          entryFee: true,
+          venue: true,
+          startsAt: true,
+          endsAt: true,
+          group: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              bannerImageUrl: true
+            }
+          }
+        }
+      },
+      team: {
+        select: {
+          id: true,
+          name: true,
+          captainId: true,
+          members: {
+            select: {
+              id: true,
+              role: true,
+              user: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true
+                }
+              }
+            }
+          }
+        }
+      },
+      reviewedBy: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true
+        }
+      }
+    },
+    orderBy: {
+      createdAt: "desc"
+    }
+  });
+
   const now = new Date();
   const registrationActivities = {
-    upcoming: user.registrations.filter(
+    upcoming: registrations.filter(
       (registration) => registration.event.startsAt !== null && registration.event.startsAt > now
     ),
-    ongoingOrRecent: user.registrations.filter(
+    ongoingOrRecent: registrations.filter(
       (registration) => registration.event.startsAt === null || registration.event.startsAt <= now
     ),
-    past: user.registrations.filter(
+    past: registrations.filter(
       (registration) => registration.event.endsAt !== null && registration.event.endsAt < now
     )
   };
@@ -220,9 +225,10 @@ export const getMyProfile = async (userId: string) => {
 
   return {
     ...user,
+    registrations, // Adding the combined registrations here
     createdEvents: user.createdEvents,
     activitySummary: {
-      totalRegistrations: user.registrations.length,
+      totalRegistrations: registrations.length,
       pastEvents: registrationActivities.past.length,
       totalCreatedEvents: user.createdEvents.length,
       publishedCreatedEvents: user.createdEvents.filter(

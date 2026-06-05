@@ -162,3 +162,93 @@ Completed locally:
 
 - `npx prisma generate`
 - `npm run build`
+
+## Render Deployment
+
+This backend can be deployed to Render as a Node web service.
+
+Recommended settings:
+
+- Build command: `npm install --include=dev && npm run build`
+- Start command: `npm start`
+
+Why this is enough:
+
+- `npm run build` now runs `prisma generate` before TypeScript compilation.
+- You do not need a separate `npx prisma generate` step in Render anymore.
+- `--include=dev` is important on Render because TypeScript and `@types/*` packages are needed during the build step.
+
+Required environment variables on Render:
+
+- `NODE_ENV=production`
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `JWT_EXPIRES_IN`
+- `OTP_TTL_MINUTES`
+- `SENDER_EMAIL`
+- `CORS_ORIGIN`
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+
+A sample configuration is included in `.env.example`, and a Render blueprint is included in `render.yaml`.
+
+## Vercel Deployment
+
+This repo can also be deployed to Vercel as a frontend-only project:
+
+- frontend: built from `client/dist`
+- backend: hosted separately on Render
+
+Files used for this flow:
+
+- `vercel.json`
+
+Recommended Vercel setup:
+
+- Framework preset: `Other`
+- Root directory: project root
+- Build and install commands are already defined in `vercel.json`
+
+How it works:
+
+- `npm run vercel:install` installs only the client dependencies
+- `npm run vercel:build` builds the Vite frontend in `client`
+- Vercel serves `client/dist` as the site output
+- All frontend routes rewrite to `index.html` for React Router support
+
+Required environment variables on Vercel:
+
+- `NODE_ENV=production`
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `JWT_EXPIRES_IN`
+- `OTP_TTL_MINUTES`
+- `SENDER_EMAIL`
+- `CORS_ORIGIN`
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+
+Important notes for Vercel:
+
+- No backend code should run on Vercel in this setup.
+- The frontend should call your Render backend through `VITE_API_URL`.
+- Set `CORS_ORIGIN` on Render to your deployed Vercel frontend domain.
+
+## Vercel Frontend + Render Backend
+
+If your frontend is on Vercel and your Express backend is on Render, the frontend should not use same-origin `/api/v1` calls in production.
+
+Use this client environment variable on Vercel:
+
+- `VITE_API_URL=https://your-render-backend.onrender.com/api/v1`
+
+The frontend Axios client already supports this and falls back to:
+
+- `http://localhost:4000/api/v1` during local development
+- `/api/v1` only when no explicit frontend API URL is provided
+
+You should also make sure your Render backend allows your Vercel domain in:
+
+- `CORS_ORIGIN=https://your-vercel-app.vercel.app`

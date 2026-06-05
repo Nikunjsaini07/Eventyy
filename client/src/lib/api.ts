@@ -1,7 +1,12 @@
 import axios from "axios";
 
+const fallbackApiUrl =
+  typeof window !== "undefined" && window.location.hostname === "localhost"
+    ? "http://localhost:4000/api/v1"
+    : "/api/v1";
+
 const api = axios.create({
-  baseURL: "/api/v1",
+  baseURL: import.meta.env.VITE_API_URL || fallbackApiUrl,
   headers: {
     "Content-Type": "application/json",
   },

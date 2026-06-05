@@ -28,7 +28,7 @@ const sendOtpEmail = async (
   }
 
   await transporter.sendMail({
-    from: env.SENDER_EMAIL,
+    from: env.SENDER_EMAIL ?? from,
     to: email,
     subject,
     text: `${message} Your OTP code is ${otpCode}. It will expire in ${ttlMinutes} minutes.`,
